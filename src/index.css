@@ -1,0 +1,19 @@
+/* File ini akan secara otomatis diproses oleh PostCSS dan Tailwind.
+ Cukup 3 baris ini saja yang dibutuhkan.
+*/
+
+/* 1. Mengimpor style dasar browser (reset) dari Tailwind */
+@tailwind base;
+
+/* 2. Mengimpor class komponen (misal: .container) dari Tailwind */
+@tailwind components;
+
+/* 3. Mengimpor semua class utility (misal: p-4, m-2, bg-blue-500) dari Tailwind */
+@tailwind utilities;
+
+/* Anda bisa menambahkan style CSS global kustom Anda di bawah sini
+  jika diperlukan, misal:
+  body {
+    background-color: #f8f9fa;
+  }
+*/
