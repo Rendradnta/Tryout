@@ -1,0 +1,16 @@
+# Dependensi
+/node_modules
+
+# Build output
+/dist
+/.vercel
+
+# File environment (SANGAT PENTING JANGAN DI-UPLOAD)
+.env
+.env.local
+.env.*
+
+# Log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
