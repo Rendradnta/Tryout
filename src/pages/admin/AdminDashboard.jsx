@@ -23,7 +23,7 @@ const SoalList = () => {
       if (!session) throw new Error("Akses ditolak. Silakan login ulang.");
 
       // Panggil API admin yang sudah kita buat
-      const res = await fetch('/api/admin/getDaftarSoal', {
+      const res = await fetch('/api/admin/soal', {
         headers: { 'Authorization': `Bearer ${session.access_token}` }
       });
       
@@ -58,7 +58,7 @@ const SoalList = () => {
       if (!session) throw new Error("Akses ditolak.");
 
       // Panggil API hapus soal yang sudah kita buat
-      const res = await fetch(`/api/admin/hapusSoal?id=${soalId}`, {
+      const res = await fetch(`/api/admin/soal?id=${soalId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${session.access_token}` }
       });
