@@ -81,7 +81,7 @@ export default function HistoryPage() {
         if (sessionError || !session) throw new Error("Akses ditolak. Silakan login ulang.");
 
         // 3. Panggil API backend 'getHistory'
-        const res = await fetch('/api/user/getHistory', {
+        const res = await fetch('/api/user?action=getHistory', {
           headers: {
             'Authorization': `Bearer ${session.access_token}`
           }
