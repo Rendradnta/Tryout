@@ -14,7 +14,6 @@ const handler = async (req, res) => {
   }
 
   // 2. Ambil ID Soal dari query parameter
-  // Frontend akan memanggil: /api/admin/getSoalDetail?id=xxxx-xxxx
   const { id } = req.query;
 
   if (!id) {
@@ -25,11 +24,11 @@ const handler = async (req, res) => {
     // 3. Ambil data soal dari database menggunakan koneksi ADMIN
     const { data, error } = await supabaseAdmin
       .from('soal')
-      .select('*') // 4. Ambil SEMUA kolom (*)
+      .select('*') // Ambil SEMUA kolom (*)
       .eq('id', id)
       .single(); // Kita harapkan hanya 1 hasil
 
-    // 5. Tangani jika ada error atau soal tidak ditemukan
+    // 4. Tangani jika ada error atau soal tidak ditemukan
     if (error) {
       console.error('Supabase error:', error);
       if (error.code === 'PGRST116') { // Kode Postgres untuk "no rows found"
@@ -42,7 +41,7 @@ const handler = async (req, res) => {
         return res.status(404).json({ error: 'Soal tidak ditemukan.' });
     }
 
-    // 6. Berhasil!
+    // 5. Berhasil!
     return res.status(200).json({ data: data });
 
   } catch (err) {
@@ -51,5 +50,5 @@ const handler = async (req, res) => {
   }
 };
 
-// 7. Bungkus dengan 'withAdminAuth' untuk keamanan
+// 6. Bungkus dengan 'withAdminAuth' untuk keamanan
 export default withAdminAuth(handler);
