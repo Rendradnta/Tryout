@@ -67,7 +67,7 @@ export default function ProtectedRoute({ children, adminOnly = false }) {
 
     // Dengarkan juga perubahan auth, jika user logout di tab lain
     const { data: authListener } = supabase.auth.onAuthStateChange(
-      (_event, session) = > {
+      (_event, session) => {
         if (_event === 'SIGNED_OUT') {
           setIsLoggedIn(false);
           setUserRole(null);
