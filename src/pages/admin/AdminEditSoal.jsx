@@ -39,8 +39,8 @@ export default function AdminEditSoal() {
         if (!session) throw new Error("Akses ditolak.");
 
         // Panggil API baru (yang belum kita buat) untuk ambil detail
-        // Kita asumsikan API ini ada: /api/admin/getSoalDetail
-        const res = await fetch(`/api/admin/getSoalDetail?id=${soalId}`, {
+        // Kita asumsikan API ini ada: /api/admin/soal
+        const res = await fetch(`/api/admin/soal?id=${soalId}`, {
            headers: { 'Authorization': `Bearer ${session.access_token}` }
         });
         
@@ -96,7 +96,7 @@ export default function AdminEditSoal() {
       if (!session) throw new Error("Akses ditolak.");
 
       // 6. Kirim data ke API backend 'editSoal'
-      const res = await fetch(`/api/admin/editSoal?id=${soalId}`, { // Kirim ID di query
+      const res = await fetch(`/api/admin/soal?id=${soalId}`, { // Kirim ID di query
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
