@@ -1,0 +1,19 @@
+name: Proses Antrian Skor
+
+on:
+  schedule:
+    # 1. Jalankan setiap 5 menit
+    - cron: '*/5 * * * *'
+  
+  # 2. Ini ditambahkan agar Anda bisa menjalankan manual dari tab 'Actions' di GitHub
+  workflow_dispatch:
+
+jobs:
+  ping_api:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Memanggil API Proses Skor Vercel
+        run: |
+          curl --request POST \
+            --url 'https://https://tryout-seven.vercel.app/api/cron/prosesSkor' \
+            --header 'Authorization: Bearer ${{ secrets.CRON_SECRET }}'
