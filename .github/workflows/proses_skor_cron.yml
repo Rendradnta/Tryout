@@ -15,5 +15,5 @@ jobs:
       - name: Memanggil API Proses Skor Vercel
         run: |
           curl --request POST \
-            --url 'https://https://tryout-seven.vercel.app/api/cron/prosesSkor' \
+            --url 'https://https://to.resa.my.id/api/cron/prosesSkor' \
             --header 'Authorization: Bearer ${{ secrets.CRON_SECRET }}'
