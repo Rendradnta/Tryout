@@ -56,7 +56,7 @@ export default function AdminTambahSoal() {
       if (!session) throw new Error("Akses ditolak. Silakan login ulang.");
 
       // 5. Kirim data ke API backend 'tambahSoal'
-      const res = await fetch('/api/admin/tambahSoal', {
+      const res = await fetch('/api/admin/soal', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
