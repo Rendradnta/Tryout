@@ -58,7 +58,7 @@ export default function PeringkatPage() {
         if (sessionError || !session) throw new Error("Akses ditolak. Silakan login ulang.");
 
         // 5. Panggil API backend 'getPeringkat'
-        const res = await fetch(`/api/user/getPeringkat?paket_id=${selectedPaketId}`, {
+        const res = await fetch(`/api/user?action=getPeringkat&paket_id=${selectedPaketId}`, {
           headers: {
             'Authorization': `Bearer ${session.access_token}`
           }
