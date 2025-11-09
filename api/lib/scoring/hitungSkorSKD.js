@@ -9,32 +9,43 @@ export async function hitungSkorSKD(jawabanUser, kunciJawabanPaket, passingGrade
 
   for (const kunciSoal of kunciJawabanPaket) {
     const idSoal = kunciSoal.id;
-    const subtes = kunciSoal.subtes_id; 
+    
+    // --- PERBAIKAN 1 (NAMA SUBTES) ---
+    // Tambahkan .toLowerCase() untuk memastikan perbandingan aman
+    const subtes = (kunciSoal.subtes_id || '').toLowerCase(); 
+
     const jawaban = jawabanUser[idSoal]; 
 
     if (!jawaban) {
       continue;
     }
 
+    // Pastikan kunci_jawaban ada sebelum diakses
+    const kunci = kunciSoal.kunci_jawaban;
+    if (!kunci) {
+      console.error(`Kunci jawaban null untuk soal ${idSoal}`);
+      continue;
+    }
+
     if (subtes === 'twk' || subtes === 'tiu') {
-      const kunciBenar = kunciSoal.kunci_jawaban.kunci;
+      const kunciBenar = kunci.kunci;
       
-      // --- PERBAIKAN DI SINI ---
-      // Kita ubah keduanya jadi huruf kecil sebelum membandingkan
-      if (jawaban.toLowerCase() === kunciBenar.toLowerCase()) {
+      // --- PERBAIKAN 2 (JAWABAN) ---
+      // Pastikan keduanya .toLowerCase()
+      if (jawaban && kunciBenar && jawaban.toLowerCase() === kunciBenar.toLowerCase()) {
         if (subtes === 'twk') skorTWK += 5;
         if (subtes === 'tiu') skorTIU += 5;
       }
     } else if (subtes === 'tkp') {
-      // (Logika TKP sudah benar, tidak perlu diubah)
-      const skorOpsi = kunciSoal.kunci_jawaban[jawaban];
+      // (Logika TKP sudah aman, karena 'jawaban' adalah key, bukan value)
+      const skorOpsi = kunci[jawaban];
       if (skorOpsi) {
         skorTKP += skorOpsi;
       }
     }
   }
 
-  // ... (sisa fungsi tetap sama) ...
+  // ... (Sisa fungsi tetap sama) ...
   const skorTotal = skorTWK + skorTIU + skorTKP;
   let statusLulus = null;
   if (passingGrade) {
@@ -53,4 +64,4 @@ export async function hitungSkorSKD(jawabanUser, kunciJawabanPaket, passingGrade
       tkp: skorTKP
     }
   };
-}
+      }
