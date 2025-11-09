@@ -133,7 +133,7 @@ export default function Navbar() {
         {/* 1. Logo, Judul, dan Quote (Sisi Kiri) */}
         <Link to="/" className="flex items-center gap-3">
           <img 
-            src="/logo-rs.jpg" // Pastikan ada di folder 'public/logo-rs.jpg'
+            src="/logo.png" // Pastikan ada di folder 'public/logo-rs.jpg'
             alt="Logo RS" 
             className="h-10 w-10 rounded-full"
             onError={(e) => { e.currentTarget.style.display = 'none'; }}
