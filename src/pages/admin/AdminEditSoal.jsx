@@ -2,17 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 
-// Komponen Loading
 const LoadingSoal = () => <p className="text-gray-600">Memuat data soal...</p>;
 
 export default function AdminEditSoal() {
-  // 1. Ambil ID soal dari parameter URL
   const { soalId } = useParams();
   const navigate = useNavigate();
 
-  // 2. State untuk semua field di form
+  // State untuk semua field di form
   const [paketId, setPaketId] = useState('');
-  const [subtesId, setSubtesId] = useState('');
+  const [subtesId, setSubtesId] = useState(''); // State ini akan diisi oleh useEffect
   const [nomorSoal, setNomorSoal] = useState(1);
   const [tipeSoal, setTipeSoal] = useState('pg');
   const [narasiSoal, setNarasiSoal] = useState('');
@@ -23,11 +21,11 @@ export default function AdminEditSoal() {
   
   // State untuk UI
   const [loading, setLoading] = useState(false);
-  const [loadingData, setLoadingData] = useState(true); // State loading data awal
+  const [loadingData, setLoadingData] = useState(true); 
   const [error, setError] = useState(null);
   const [sukses, setSukses] = useState(null);
   
-  // 3. useEffect untuk MENGAMBIL DATA SOAL
+  // useEffect untuk MENGAMBIL DATA SOAL
   useEffect(() => {
     const fetchSoalDetail = async () => {
       if (!soalId) return;
@@ -38,8 +36,7 @@ export default function AdminEditSoal() {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) throw new Error("Akses ditolak.");
 
-        // Panggil API baru (yang belum kita buat) untuk ambil detail
-        // Kita asumsikan API ini ada: /api/admin/soal
+        // Memanggil API /api/admin/soal?id=... (sudah benar)
         const res = await fetch(`/api/admin/soal?id=${soalId}`, {
            headers: { 'Authorization': `Bearer ${session.access_token}` }
         });
@@ -51,14 +48,13 @@ export default function AdminEditSoal() {
         
         const { data } = await res.json();
 
-        // 4. Isi semua state form dengan data dari database
+        // Isi semua state form dengan data dari database
         setPaketId(data.paket_id || '');
-        setSubtesId(data.subtes_id || '');
+        setSubtesId(data.subtes_id || ''); // Ini akan otomatis memilih dropdown
         setNomorSoal(data.nomor_soal || 1);
         setTipeSoal(data.tipe_soal || 'pg');
         setNarasiSoal(data.narasi_soal || '');
         setTeksSoal(data.teks_soal || '');
-        // Format JSON agar rapi di textarea
         setOpsiJawaban(JSON.stringify(data.opsi_jawaban, null, 2) || '');
         setKunciJawaban(JSON.stringify(data.kunci_jawaban, null, 2) || '');
         setPembahasan(data.pembahasan || '');
@@ -71,9 +67,9 @@ export default function AdminEditSoal() {
     };
     
     fetchSoalDetail();
-  }, [soalId]); // Jalankan ulang jika soalId berubah
+  }, [soalId]); 
 
-  // 5. Fungsi saat form disubmit (EDIT)
+  // Fungsi saat form disubmit (EDIT)
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -81,7 +77,6 @@ export default function AdminEditSoal() {
     setSukses(null);
 
     let parsedOpsi, parsedKunci;
-
     try {
       parsedOpsi = JSON.parse(opsiJawaban);
       parsedKunci = JSON.parse(kunciJawaban);
@@ -90,13 +85,20 @@ export default function AdminEditSoal() {
       setLoading(false);
       return;
     }
+    
+    // Validasi Subtes
+    if (!subtesId || subtesId === "") {
+      setError("Subtes ID wajib dipilih.");
+      setLoading(false);
+      return;
+    }
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Akses ditolak.");
 
-      // 6. Kirim data ke API backend 'editSoal'
-      const res = await fetch(`/api/admin/soal?id=${soalId}`, { // Kirim ID di query
+      // Memanggil API /api/admin/soal?id=... (sudah benar)
+      const res = await fetch(`/api/admin/soal?id=${soalId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -104,7 +106,7 @@ export default function AdminEditSoal() {
         },
         body: JSON.stringify({
           paket_id: paketId,
-          subtes_id: subtesId || null,
+          subtes_id: subtesId, // Mengirim data 'subtes_id' yang sudah pasti benar
           nomor_soal: parseInt(nomorSoal, 10),
           tipe_soal: tipeSoal,
           narasi_soal: narasiSoal || null,
@@ -119,8 +121,6 @@ export default function AdminEditSoal() {
       if (!res.ok) throw new Error(data.error || "Gagal mengupdate soal.");
 
       setSukses("Soal berhasil diperbarui!");
-      // Opsional: Arahkan kembali ke dashboard admin
-      // setTimeout(() => navigate('/admin'), 1500);
 
     } catch (err) {
       setError(err.message);
@@ -129,7 +129,6 @@ export default function AdminEditSoal() {
     }
   };
   
-  // Tampilkan loading saat data soal diambil
   if (loadingData) {
     return (
       <div className="bg-white p-6 shadow rounded-lg">
@@ -148,7 +147,6 @@ export default function AdminEditSoal() {
         </Link>
       </div>
       
-      {/* Pesan Status */}
       {error && <p className="p-3 bg-red-100 text-red-700 rounded-md">{error}</p>}
       {sukses && <p className="p-3 bg-green-100 text-green-700 rounded-md">{sukses}</p>}
 
@@ -158,11 +156,31 @@ export default function AdminEditSoal() {
           <label htmlFor="paketId" className="block text-sm font-medium text-gray-700">Paket ID (Wajib)</label>
           <input type="text" id="paketId" value={paketId} onChange={(e) => setPaketId(e.target.value)} required className="mt-1 input-field" />
         </div>
+        
+        {/* --- PERBAIKAN DI SINI --- */}
         <div>
-          <label htmlFor="subtesId" className="block text-sm font-medium text-gray-700">Subtes ID (Opsional)</label>
-          <input type="text" id="subtesId" value={subtesId} onChange={(e) => setSubtesId(e.target.value)} className="mt-1 input-field" />
+          <label htmlFor="subtesId" className="block text-sm font-medium text-gray-700">Subtes ID (Wajib)</label>
+          <select 
+            id="subtesId" 
+            value={subtesId} // Ini akan diisi oleh useEffect
+            onChange={(e) => setSubtesId(e.target.value)} 
+            required 
+            className="mt-1 input-field"
+          >
+            <option value="">-- Pilih Subtes --</option>
+            <option value="twk">SKD - TWK (Wawasan Kebangsaan)</option>
+            <option value="tiu">SKD - TIU (Intelegensia Umum)</option>
+            <option value="tkp">SKD - TKP (Karakteristik Pribadi)</option>
+            <option value="pu">UTBK - PU (Penalaran Umum)</option>
+            <option value="ppu">UTBK - PPU (Pengetahuan & Pemahaman Umum)</option>
+            <option value="pbm">UTBK - PBM (Pemahaman Bacaan & Menulis)</option>
+            <option value="pk">UTBK - PK (Pengetahuan Kuantitatif)</option>
+          </select>
         </div>
+        {/* --- AKHIR PERBAIKAN --- */}
       </div>
+
+      {/* ... (Sisa form Anda tetap sama persis) ... */}
 
       {/* Baris 2: Nomor & Tipe */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -181,37 +199,28 @@ export default function AdminEditSoal() {
         </div>
       </div>
 
-      {/* Narasi Soal */}
+      {/* ... (Sisa form: Narasi, Teks, Opsi, Kunci, Pembahasan) ... */}
       <div>
         <label htmlFor="narasiSoal" className="block text-sm font-medium text-gray-700">Narasi Soal (Opsional)</label>
         <textarea id="narasiSoal" value={narasiSoal} onChange={(e) => setNarasiSoal(e.target.value)} rows="3" className="mt-1 input-field"></textarea>
       </div>
-
-      {/* Teks Soal */}
       <div>
         <label htmlFor="teksSoal" className="block text-sm font-medium text-gray-700">Teks Soal / Pertanyaan (Wajib)</label>
         <textarea id="teksSoal" value={teksSoal} onChange={(e) => setTeksSoal(e.target.value)} rows="5" required className="mt-1 input-field"></textarea>
       </div>
-
-      {/* Opsi Jawaban (JSON) */}
       <div>
         <label htmlFor="opsiJawaban" className="block text-sm font-medium text-gray-700">Opsi Jawaban (Wajib - Format JSON)</label>
         <textarea id="opsiJawaban" value={opsiJawaban} onChange={(e) => setOpsiJawaban(e.target.value)} rows="8" required className="mt-1 input-field font-mono text-sm"></textarea>
       </div>
-
-      {/* Kunci Jawaban (JSON) */}
       <div>
         <label htmlFor="kunciJawaban" className="block text-sm font-medium text-gray-700">Kunci Jawaban (Wajib - Format JSON)</label>
         <textarea id="kunciJawaban" value={kunciJawaban} onChange={(e) => setKunciJawaban(e.target.value)} rows="5" required className="mt-1 input-field font-mono text-sm"></textarea>
       </div>
-
-      {/* Pembahasan */}
       <div>
         <label htmlFor="pembahasan" className="block text-sm font-medium text-gray-700">Pembahasan (Wajib)</label>
         <textarea id="pembahasan" value={pembahasan} onChange={(e) => setPembahasan(e.target.value)} rows="5" required className="mt-1 input-field"></textarea>
       </div>
-
-      {/* Tombol Submit */}
+      
       <div className="text-right">
         <button
           type="submit"
@@ -222,22 +231,11 @@ export default function AdminEditSoal() {
         </button>
       </div>
       
-      {/* Styling untuk .input-field */}
+      {/* ... (Tag <style> Anda tetap sama) ... */}
       <style>{`
-        .input-field {
-          display: block;
-          width: 100%;
-          padding: 0.5rem 0.75rem;
-          border: 1px solid #D1D5DB;
-          border-radius: 0.375rem;
-          box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-        }
-        .input-field:focus {
-          outline: none;
-          border-color: #3B82F6;
-          box-shadow: 0 0 0 2px #BFDBFE;
-        }
+        .input-field { display: block; width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #D1D5DB; border-radius: 0.375rem; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); }
+        .input-field:focus { outline: none; border-color: #3B82F6; box-shadow: 0 0 0 2px #BFDBFE; }
       `}</style>
     </form>
   );
-}
+         }
