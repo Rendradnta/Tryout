@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 
-// 1. Impor Komponen (yang akan kita buat nanti)
+// 1. Impor Komponen (Timer, SoalDisplay, NavigasiSoal)
 import Timer from '../components/test/Timer.jsx';
 import SoalDisplay from '../components/test/SoalDisplay.jsx';
 import NavigasiSoal from '../components/test/NavigasiSoal.jsx';
@@ -23,15 +23,15 @@ export default function TestPage() {
   // --- STATE UTAMA ---
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [config, setConfig] = useState(null); // { tipe_ujian, config_subtes, ... }
-  const [soals, setSoals] = useState([]); // Array semua soal
-  const [jawabanUser, setJawabanUser] = useState({}); // { "soal-id-1": "A" }
-  const [waktuMulai] = useState(new Date()); // Catat waktu mulai
+  const [config, setConfig] = useState(null); 
+  const [soals, setSoals] = useState([]); 
+  const [jawabanUser, setJawabanUser] = useState({}); 
+  const [waktuMulai] = useState(new Date()); 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // --- STATE NAVIGASI ---
-  const [soalAktifIndex, setSoalAktifIndex] = useState(0); // Index di array `soals` (0 s.d. 109)
-  const [subtesAktifIndex, setSubtesAktifIndex] = useState(0); // Index di array subtes (0, 1, 2...)
+  const [soalAktifIndex, setSoalAktifIndex] = useState(0); 
+  const [subtesAktifIndex, setSubtesAktifIndex] = useState(0); 
 
   // --- 2. LOGIKA PENGAMBILAN DATA ---
   useEffect(() => {
@@ -39,11 +39,9 @@ export default function TestPage() {
       setLoading(true);
       setError(null);
       try {
-        // Ambil session/token untuk otentikasi
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         if (sessionError || !session) throw new Error("Akses ditolak. Silakan login ulang.");
         
-        // Panggil API backend 'getSoal' kita
         const res = await fetch(`/api/test/getSoal?paket_id=${paketId}`, {
           headers: {
             'Authorization': `Bearer ${session.access_token}`
@@ -69,7 +67,6 @@ export default function TestPage() {
   }, [paketId]);
 
   // --- 3. LOGIKA KHUSUS UTBK (MEMOIZED) ---
-  // Menghitung rentang soal untuk tiap subtes
   const subtesRanges = useMemo(() => {
     if (config?.tipe_ujian !== 'utbk' || !config.config_subtes) return [];
     let startIndex = 0;
@@ -86,7 +83,6 @@ export default function TestPage() {
     });
   }, [config]);
 
-  // Mendapatkan info subtes yang aktif sekarang
   const subtesAktif = useMemo(() => {
     if (config?.tipe_ujian === 'utbk') {
       return subtesRanges[subtesAktifIndex];
@@ -95,27 +91,10 @@ export default function TestPage() {
   }, [config, subtesAktifIndex, subtesRanges]);
 
   // --- 4. LOGIKA HANDLER (FUNGSI AKSI) ---
-
-  // Dipanggil oleh Timer saat waktu habis
-  const handleTimeUp = useCallback(() => {
-    if (config?.tipe_ujian === 'skd') {
-      handleSubmitTest(); // Waktu total SKD habis
-    } 
-    else if (config?.tipe_ujian === 'utbk') {
-      const isLastSubtest = (subtesAktifIndex === subtesRanges.length - 1);
-      if (isLastSubtest) {
-        handleSubmitTest(); // Waktu subtes terakhir habis
-      } else {
-        // Pindah ke subtes berikutnya
-        const nextSubtesIndex = subtesAktifIndex + 1;
-        setSubtesAktifIndex(nextSubtesIndex);
-        // Pindahkan user ke soal pertama subtes baru
-        setSoalAktifIndex(subtesRanges[nextSubtesIndex].startIndex);
-      }
-    }
-  }, [config, subtesAktifIndex, subtesRanges, handleSubmitTest]); // (handleSubmitTest akan di-memoize)
-
-  // Dipanggil saat user klik "Selesaikan Ujian" (SKD) atau Waktu Habis
+  // 
+  // --- INI PERBAIKANNYA ---
+  // 'handleSubmitTest' sekarang dideklarasikan SEBELUM 'handleTimeUp'
+  //
   const handleSubmitTest = useCallback(async () => {
     if (isSubmitting) return;
     setIsSubmitting(true);
@@ -141,19 +120,37 @@ export default function TestPage() {
         body: JSON.stringify(payload)
       });
       
-      if (res.status !== 202) { // Kita harapkan 202 Accepted dari API submit
+      if (res.status !== 202) { 
         const errData = await res.json();
         throw new Error(errData.error || "Gagal menyimpan jawaban.");
       }
       
-      // Sukses!
       navigate('/history', { replace: true, state: { message: "Jawaban berhasil disubmit!" } });
       
     } catch (err) {
       setError(`Gagal submit: ${err.message}`);
-      setIsSubmitting(false); // Biarkan user coba lagi jika gagal
+      setIsSubmitting(false); 
     }
   }, [isSubmitting, paketId, config, jawabanUser, waktuMulai, navigate]);
+
+
+  // Dipanggil oleh Timer saat waktu habis
+  const handleTimeUp = useCallback(() => {
+    if (config?.tipe_ujian === 'skd') {
+      handleSubmitTest(); // Waktu total SKD habis
+    } 
+    else if (config?.tipe_ujian === 'utbk') {
+      const isLastSubtest = (subtesAktifIndex === subtesRanges.length - 1);
+      if (isLastSubtest) {
+        handleSubmitTest(); // Waktu subtes terakhir habis
+      } else {
+        // Pindah ke subtes berikutnya
+        const nextSubtesIndex = subtesAktifIndex + 1;
+        setSubtesAktifIndex(nextSubtesIndex);
+        setSoalAktifIndex(subtesRanges[nextSubtesIndex].startIndex);
+      }
+    }
+  }, [config, subtesAktifIndex, subtesRanges, handleSubmitTest]); // Sekarang 'handleSubmitTest' sudah aman
 
   // Menyimpan jawaban user ke state
   const handleSelectJawaban = (soalId, jawaban) => {
@@ -172,7 +169,7 @@ export default function TestPage() {
     timerDurationInSeconds = config.waktu_total_menit * 60;
   } else if (subtesAktif) {
     timerDurationInSeconds = subtesAktif.waktuMenit * 60;
-    timerKey = subtesAktif.index; // Ganti key timer agar reset
+    timerKey = subtesAktif.index; 
   }
 
   // Tentukan soal mana yang boleh dinavigasi
@@ -180,8 +177,7 @@ export default function TestPage() {
     soals: soals,
     jawabanUser: jawabanUser,
     soalAktifIndex: soalAktifIndex,
-    onNavClick: (index) => setSoalAktifIndex(index), // Klik navigasi
-    // Untuk UTBK, kita kunci navigasinya
+    onNavClick: (index) => setSoalAktifIndex(index), 
     range: (config.tipe_ujian === 'utbk' && subtesAktif)
       ? { start: subtesAktif.startIndex, end: subtesAktif.endIndex }
       : { start: 0, end: soals.length - 1 }
@@ -204,7 +200,6 @@ export default function TestPage() {
         <h3 className="text-lg font-semibold mt-4 mb-2">Navigasi Soal</h3>
         <NavigasiSoal {...navProps} />
         
-        {/* Tombol Selesai (HANYA SKD) */}
         {config.tipe_ujian === 'skd' && (
           <button
             onClick={handleSubmitTest}
@@ -218,7 +213,6 @@ export default function TestPage() {
 
       {/* Kolom Kanan (Soal & Kontrol) */}
       <main className="w-full md:w-3/4 lg:w-4/5 p-6 md:p-10 overflow-y-auto">
-        {/* Header Soal */}
         <h2 className="text-xl font-bold text-blue-700 mb-4">
           {config.tipe_ujian === 'utbk' ? subtesAktif?.nama : config.judul}
         </h2>
@@ -226,7 +220,7 @@ export default function TestPage() {
         {/* Komponen Soal */}
         <SoalDisplay 
           soal={soals[soalAktifIndex]}
-          jawaban={jawabanUser[soals[soalAktifIndex]?.id]}
+          jawaban={soals[soalAktifIndex] ? jawabanUser[soals[soalAktifIndex].id] : undefined}
           onSelectJawaban={handleSelectJawaban}
         />
         
@@ -256,4 +250,4 @@ export default function TestPage() {
       </main>
     </div>
   );
-}
+    }
