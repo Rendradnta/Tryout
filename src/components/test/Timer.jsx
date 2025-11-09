@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 /**
  * Format detik menjadi "MM:SS" (Menit:Detik)
@@ -6,48 +6,63 @@ import React, { useState, useEffect } from 'react';
 function formatWaktu(totalDetik) {
   const menit = Math.floor(totalDetik / 60);
   const detik = totalDetik % 60;
-  // Tambahkan '0' di depan jika angkanya < 10
   return `${menit.toString().padStart(2, '0')}:${detik.toString().padStart(2, '0')}`;
 }
 
 /**
  * Komponen Timer Hitung Mundur
- * @param {number} durationInSeconds - Total durasi dalam detik (misal: 30 menit * 60)
+ * @param {number} durationInSeconds - Total durasi dalam detik
  * @param {function} onTimeUp - Fungsi yang dipanggil saat waktu habis (00:00)
  */
 export default function Timer({ durationInSeconds, onTimeUp }) {
-  // 1. State untuk menyimpan sisa waktu
   const [sisaDetik, setSisaDetik] = useState(durationInSeconds);
+  
+  // --- PERBAIKAN DI SINI (Menggunakan useRef) ---
+  // 1. Kita simpan fungsi onTimeUp di dalam 'ref'
+  // Ini adalah "kotak" yang bisa diubah tanpa memicu re-render
+  const onTimeUpRef = useRef(onTimeUp);
 
-  // 2. useEffect untuk menjalankan interval timer
+  // 2. Setiap kali 'onTimeUp' (prop) berubah, kita update 'kotak' (ref) kita
   useEffect(() => {
-    // Set sisa waktu awal saat komponen dimuat (atau durasi berubah)
+    onTimeUpRef.current = onTimeUp;
+  }, [onTimeUp]);
+  // --- AKHIR PERBAIKAN 1 ---
+
+
+  // 3. useEffect untuk menjalankan interval timer
+  useEffect(() => {
+    // Set sisa waktu awal saat durasi berubah
     setSisaDetik(durationInSeconds);
 
-    // 3. Buat interval yang berjalan setiap 1 detik
     const timerInterval = setInterval(() => {
       setSisaDetik((prevDetik) => {
-        // Jika sisa 1 detik, ini adalah detik terakhir
         if (prevDetik <= 1) {
-          clearInterval(timerInterval); // Hentikan timer
-          onTimeUp(); // Panggil fungsi (beri tahu TestPage waktu habis)
+          clearInterval(timerInterval); 
+          // 4. Panggil fungsi onTimeUp dari 'ref' (kotak)
+          // Ini menjamin kita selalu memanggil versi TERBARU
+          // dari 'handleTimeUp' di TestPage
+          if (onTimeUpRef.current) {
+            onTimeUpRef.current(); 
+          }
           return 0;
         }
-        // Kurangi 1 detik
         return prevDetik - 1;
       });
-    }, 1000); // 1000ms = 1 detik
+    }, 1000); 
 
-    // 4. Fungsi cleanup
-    // Ini akan berjalan saat komponen 'unmount' (dihancurkan)
-    // (misal: pindah subtes di UTBK, atau user submit)
+    // 5. Fungsi cleanup
     return () => {
       clearInterval(timerInterval);
     };
-  }, [durationInSeconds, onTimeUp]); // 5. Reset timer jika durasi atau fungsi onTimeUp berubah
+  
+  // --- PERBAIKAN 3 DI SINI ---
+  // 6. Kita HAPUS 'onTimeUp' dari dependency array.
+  // Timer sekarang HANYA akan me-reset jika 'durationInSeconds' berubah
+  // (yaitu saat pindah subtes atau saat refresh halaman)
+  }, [durationInSeconds]); 
+  // --- AKHIR PERBAIKAN 3 ---
 
-  // Tentukan warna timer
-  const warnaTeks = sisaDetik <= 300 ? 'text-red-600' : 'text-gray-900'; // Merah jika sisa 5 menit
+  const warnaTeks = sisaDetik <= 300 ? 'text-red-600' : 'text-gray-900'; 
 
   return (
     <div className="p-4 bg-white border border-gray-300 rounded-lg shadow-md sticky top-4">
@@ -59,4 +74,4 @@ export default function Timer({ durationInSeconds, onTimeUp }) {
       </p>
     </div>
   );
-}
+    }
