@@ -1,22 +1,18 @@
 import { Hono } from 'hono';
 import { handle } from 'hono/vercel';
-
-// --- Impor Pustaka & Helper dari /lib ---
 import { createClient } from '@supabase/supabase-js';
 import { supabaseAdmin } from './lib/supabaseAdmin.js';
 import { kv } from './lib/vercelKV.js';
 import { hitungSkorSKD } from './lib/scoring/hitungSkorSKD.js';
 import { hitungSkorUTBK } from './lib/scoring/hitungSkorUTBK.js';
 
-// --- Variabel Global & Klien ---
 const supabaseUrl = process.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY;
 const cronSecret = process.env.CRON_SECRET;
 
-// 1. Inisialisasi Hono
 const app = new Hono().basePath('/api');
 
-// 2. Middleware Keamanan (Hono)
+// --- (Middleware 'userAuth' dan 'adminAuth' Anda tetap sama persis) ---
 const userAuth = async (c, next) => {
   const authHeader = c.req.header('authorization');
   const token = authHeader?.split(' ')[1];
@@ -27,7 +23,6 @@ const userAuth = async (c, next) => {
   c.set('user', user);
   await next();
 };
-
 const adminAuth = async (c, next) => {
   const authHeader = c.req.header('authorization');
   const token = authHeader?.split(' ')[1];
@@ -42,12 +37,10 @@ const adminAuth = async (c, next) => {
   await next();
 };
 
-// 3. Rute API (Versi Sederhana)
-
-// === Rute Admin (/api/admin/soal) ===
+// --- (Rute Admin, Auth, Test Anda tetap sama persis) ---
 const adminRoutes = new Hono();
 adminRoutes.use('*', adminAuth);
-adminRoutes.get('/soal', async (c) => { 
+adminRoutes.get('/soal', async (c) => { /* ... (Logika Get Soal List/Detail) ... */ 
   const { id, paket_id } = c.req.query();
   if (id) {
     const { data, error } = await supabaseAdmin.from('soal').select('*').eq('id', id).single();
@@ -61,13 +54,13 @@ adminRoutes.get('/soal', async (c) => {
   if (error) return c.json({ error: error.message }, 500);
   return c.json({ data });
 });
-adminRoutes.post('/soal', async (c) => { 
+adminRoutes.post('/soal', async (c) => { /* ... (Logika Tambah Soal) ... */ 
   const body = await c.req.json();
   const { data, error } = await supabaseAdmin.from('soal').insert([body]).select().single();
   if (error) return c.json({ error: `Gagal menyimpan: ${error.message}` }, 500);
   return c.json({ message: 'Soal berhasil ditambahkan', data }, 201);
 });
-adminRoutes.put('/soal', async (c) => { 
+adminRoutes.put('/soal', async (c) => { /* ... (Logika Edit Soal) ... */ 
   const { id } = c.req.query();
   const body = await c.req.json();
   if (!id) return c.json({ error: 'ID Soal wajib ada di query.' }, 400);
@@ -75,7 +68,7 @@ adminRoutes.put('/soal', async (c) => {
   if (error) return c.json({ error: `Gagal mengupdate: ${error.message}` }, 500);
   return c.json({ message: 'Soal berhasil diperbarui', data });
 });
-adminRoutes.delete('/soal', async (c) => { 
+adminRoutes.delete('/soal', async (c) => { /* ... (Logika Hapus Soal) ... */ 
   const { id } = c.req.query();
   if (!id) return c.json({ error: 'ID Soal wajib ada di query.' }, 400);
   const { error } = await supabaseAdmin.from('soal').delete().eq('id', id);
@@ -83,9 +76,8 @@ adminRoutes.delete('/soal', async (c) => {
   return c.json({ message: 'Soal berhasil dihapus' });
 });
 
-// === Rute Auth (/api/auth/...) ===
 const authRoutes = new Hono();
-authRoutes.post('/login', async (c) => { 
+authRoutes.post('/login', async (c) => { /* ... (Logika Login) ... */ 
   const { email, password } = await c.req.json();
   if (!email || !password) return c.json({ error: 'Email dan password wajib diisi.' }, 400);
   const supabase = createClient(supabaseUrl, supabaseAnonKey, { auth: { persistSession: false } });
@@ -93,7 +85,7 @@ authRoutes.post('/login', async (c) => {
   if (error) return c.json({ error: `Login gagal: ${error.message}` }, 401);
   return c.json({ message: 'Login berhasil', user: data.user, session: data.session });
 });
-authRoutes.post('/signup', async (c) => { 
+authRoutes.post('/signup', async (c) => { /* ... (Logika Signup) ... */ 
   const { email, password, nama_lengkap } = await c.req.json();
   if (!email || !password) return c.json({ error: 'Email dan password wajib diisi.' }, 400);
   const supabase = createClient(supabaseUrl, supabaseAnonKey, { auth: { persistSession: false } });
@@ -102,17 +94,16 @@ authRoutes.post('/signup', async (c) => {
   let message = data.session ? 'Pendaftaran berhasil.' : 'Pendaftaran berhasil. Cek email Anda.';
   return c.json({ message, user: data.user, session: data.session }, 201);
 });
-authRoutes.get('/user', userAuth, async (c) => { 
+authRoutes.get('/user', userAuth, async (c) => { /* ... (Logika Get User) ... */ 
   const user = c.get('user');
   const { data: profile, error } = await supabaseAdmin.from('profiles').select('nama_lengkap, role').eq('id', user.id).single();
   if (error) return c.json({ error: `Gagal mengambil profil: ${error.message}` }, 500);
   return c.json({ user: { ...user, ...profile } });
 });
 
-// === Rute Test (/api/test/...) ===
 const testRoutes = new Hono();
 testRoutes.use('*', userAuth);
-testRoutes.get('/getSoal', async (c) => { 
+testRoutes.get('/getSoal', async (c) => { /* ... (Logika Get Soal) ... */ 
   const { paket_id } = c.req.query();
   if (!paket_id) return c.json({ error: 'paket_id wajib ada di query.' }, 400);
   const { data, error } = await supabaseAdmin.from('soal').select('id, nomor_soal, tipe_soal, narasi_soal, teks_soal, opsi_jawaban, subtes_id').eq('paket_id', paket_id).order('nomor_soal', { ascending: true });
@@ -120,14 +111,14 @@ testRoutes.get('/getSoal', async (c) => {
   if (error || paketError) return c.json({ error: (error || paketError).message }, 500);
   return c.json({ data, config: paketData });
 });
-testRoutes.post('/submit', async (c) => { 
+testRoutes.post('/submit', async (c) => { /* ... (Logika Submit) ... */ 
   const user = c.get('user');
   const body = await c.req.json();
   const dataPekerjaan = { user_id: user.id, ...body };
   await kv.lpush('antrian_jawaban', dataPekerjaan);
   return c.json({ message: 'Jawaban diterima dan sedang diproses.' }, 202);
 });
-testRoutes.get('/getPembahasan', async (c) => { 
+testRoutes.get('/getPembahasan', async (c) => { /* ... (Logika Get Pembahasan) ... */ 
   const user = c.get('user');
   const { history_id } = c.req.query();
   if (!history_id) return c.json({ error: 'history_id wajib ada di query.' }, 400);
@@ -141,54 +132,59 @@ testRoutes.get('/getPembahasan', async (c) => {
 // === Rute User (/api/user) ===
 const userRoutes = new Hono();
 userRoutes.use('*', userAuth);
+
 userRoutes.get('/', async (c) => { 
   const user = c.get('user');
   const { action, paket_id } = c.req.query();
+
   if (action === 'getHistory') {
+    // Logika Get History (TETAP SAMA)
     const { data, error } = await supabaseAdmin.from('history_tes').select('id, waktu_selesai, skor_total, status, paket_soal ( id, judul, tipe_ujian )').eq('user_id', user.id).order('waktu_selesai', { ascending: false });
     if (error) return c.json({ error: `Gagal mengambil riwayat: ${error.message}` }, 500);
     return c.json({ data });
   }
+
+  // --- PERBAIKAN PANGGILAN PERINGKAT DI SINI ---
   if (action === 'getPeringkat') {
     if (!paket_id) return c.json({ error: 'paket_id wajib ada di query.' }, 400);
-    const { data, error } = await supabaseAdmin.from('history_tes').select('user_id, skor_total, waktu_selesai, profiles ( nama_lengkap )').eq('paket_id', paket_id).eq('status', 'selesai').order('skor_total', { ascending: false }).limit(100);
+    
+    // Panggil fungsi SQL 'get_peringkat' yang baru kita buat
+    const { data, error } = await supabaseAdmin
+      .rpc('get_peringkat', { paket_uuid: paket_id });
+
     if (error) return c.json({ error: `Gagal mengambil peringkat: ${error.message}` }, 500);
-    return c.json({ data });
+    
+    // Perlu sedikit adaptasi data untuk frontend
+    // Fungsi RPC mengembalikan {nama_lengkap: ...}, frontend (File 32) mengharapkan {profiles: {nama_lengkap: ...}}
+    // Mari kita format ulang datanya agar frontend tidak perlu diubah
+    const formattedData = data.map(item => ({
+      ...item,
+      profiles: {
+        nama_lengkap: item.nama_lengkap
+      }
+    }));
+
+    return c.json({ data: formattedData });
   }
+  // --- AKHIR PERBAIKAN ---
+  
   return c.json({ error: 'Aksi tidak valid.' }, 400);
 });
 
-// 4. Hubungkan Rute ke App Utama
-app.route('/admin', adminRoutes);
-app.route('/auth', authRoutes);
-app.route('/test', testRoutes);
-app.route('/user', userRoutes); 
-
-// 5. Rute Cron (DENGAN PERBAIKAN)
+// === Rute Cron (TETAP SAMA) ===
 app.post('/cron/prosesSkor', async (c) => {
   const authHeader = c.req.header('authorization');
   if (authHeader !== `Bearer ${cronSecret}`) {
     return c.json({ error: 'Akses tidak sah.' }, 401);
   }
-  
+  // ... (Logika Cron Job Anda tetap sama) ...
   const antrian = await kv.lrange('antrian_jawaban', 0, -1);
   if (!antrian || antrian.length === 0) return c.json({ message: 'Antrian kosong.' });
-  
   const batchHasilSkor = [];
   for (const dataSubmit of antrian) {
     const data = dataSubmit;
-    
-    // --- PERBAIKAN DI SINI ---
-    // Mengganti 'subtes' dengan 'subtes_id'
-    const { data: kunciJawabanPaket, error: kunciError } = await supabaseAdmin
-      .from('soal')
-      .select('id, subtes_id, tipe_soal, kunci_jawaban')
-      .eq('paket_id', data.paket_id);
-      
-    if(kunciError || !kunciJawabanPaket) {
-       console.error(`Gagal ambil kunci untuk paket ${data.paket_id}: ${kunciError?.message}`);
-       continue;
-    }
+    const { data: kunciJawabanPaket, error: kunciError } = await supabaseAdmin.from('soal').select('id, subtes_id, tipe_soal, kunci_jawaban').eq('paket_id', data.paket_id);
+    if(kunciError || !kunciJawabanPaket) { console.error(`Gagal ambil kunci untuk paket ${data.paket_id}: ${kunciError?.message}`); continue; }
     let hasilSkor;
     if (data.tipe_ujian === 'skd') {
       hasilSkor = await hitungSkorSKD(data.jawaban_user, kunciJawabanPaket);
@@ -212,7 +208,13 @@ app.post('/cron/prosesSkor', async (c) => {
   return c.json({ message: `Berhasil memproses ${batchHasilSkor.length} pekerjaan.` });
 });
 
-// 6. Ekspor Handler untuk Vercel
+// 4. Hubungkan Rute ke App Utama
+app.route('/admin', adminRoutes);
+app.route('/auth', authRoutes);
+app.route('/test', testRoutes);
+app.route('/user', userRoutes); 
+
+// 5. Ekspor Handler untuk Vercel
 export const GET = handle(app);
 export const POST = handle(app);
 export const PUT = handle(app);
