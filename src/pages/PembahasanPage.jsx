@@ -1,11 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
-
-// 1. Kita akan gunakan ulang komponen SoalDisplay!
 import SoalDisplay from '../components/test/SoalDisplay.jsx'; 
 
-// Komponen Loading
 const LoadingScreen = () => (
   <div className="text-center py-20">
     <p className="text-2xl font-semibold text-gray-700 animate-pulse">
@@ -14,11 +11,43 @@ const LoadingScreen = () => (
   </div>
 );
 
-// 2. Komponen baru untuk menampilkan box Pembahasan
+// --- PERBAIKAN DI SINI ---
+// Komponen PembahasanBox dibuat lebih pintar
 const PembahasanBox = ({ soal, jawabanUser }) => {
-  // Cek apakah jawaban user benar (logika sederhana)
-  // TODO: Perlu logika lebih kompleks untuk PGK & Tabel
-  const isBenar = jawabanUser === soal.kunci_jawaban?.kunci;
+  
+  let kunciJawabanTeks = "";
+  let isBenar = false;
+
+  try {
+    const tipe = soal.tipe_soal;
+    const subtes = soal.subtes_id;
+    const kunci = soal.kunci_jawaban;
+
+    if (subtes === 'tkp') {
+      // Jika TKP, tampilkan semua skor
+      kunciJawabanTeks = Object.entries(kunci)
+        .map(([opsi, skor]) => `${opsi}: ${skor} poin`)
+        .join(', ');
+      // Cek 'benar' versi TKP (skor > 0)
+      isBenar = kunci[jawabanUser] > 0;
+    } else if (tipe === 'pg' || tipe === 'isian') {
+      kunciJawabanTeks = kunci.kunci;
+      isBenar = jawabanUser?.toLowerCase() === kunci.kunci?.toLowerCase();
+    } else if (tipe === 'pgk') {
+      kunciJawabanTeks = kunci.kunci.join(', ');
+      // Cek array (perlu helper, tapi kita sederhanakan)
+      isBenar = JSON.stringify((jawabanUser || []).sort()) === JSON.stringify(kunci.kunci.sort());
+    } else if (tipe === 'tabel') {
+      kunciJawabanTeks = "Lihat detail tabel";
+      // Cek objek (perlu helper)
+      isBenar = JSON.stringify(jawabanUser) === JSON.stringify(kunci);
+    } else {
+      kunciJawabanTeks = JSON.stringify(kunci);
+    }
+
+  } catch (e) {
+    kunciJawabanTeks = "Error membaca kunci";
+  }
   
   return (
     <div className={`mt-6 p-4 rounded-lg border ${
@@ -28,13 +57,11 @@ const PembahasanBox = ({ soal, jawabanUser }) => {
     }`}>
       <h4 className="text-lg font-semibold mb-2">Pembahasan</h4>
       
-      {/* Tampilkan Jawaban User vs Kunci Jawaban */}
       <div className="space-y-1 mb-3 text-sm">
         <p>Jawaban Anda: <span className="font-bold">{JSON.stringify(jawabanUser) || "Tidak Dijawab"}</span></p>
-        <p>Kunci Jawaban: <span className="font-bold">{JSON.stringify(soal.kunci_jawaban)}</span></p>
+        <p>Kunci Jawaban: <span className="font-bold">{kunciJawabanTeks}</span></p>
       </div>
 
-      {/* Tampilkan Teks Pembahasan */}
       <div 
         className="text-sm text-gray-800 prose"
         dangerouslySetInnerHTML={{ __html: soal.pembahasan || "Pembahasan tidak tersedia." }}
@@ -45,19 +72,16 @@ const PembahasanBox = ({ soal, jawabanUser }) => {
 
 
 export default function PembahasanPage() {
+  // ... (sisa file Anda, useEffect, dll, tetap sama persis) ...
   const { historyId } = useParams();
   const navigate = useNavigate();
 
-  // --- STATE UTAMA ---
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [soalLengkap, setSoalLengkap] = useState([]); // Array semua soal
-  const [jawabanUser, setJawabanUser] = useState({}); // { "soal-id-1": "A" }
-  
-  // --- STATE NAVIGASI ---
+  const [soalLengkap, setSoalLengkap] = useState([]); 
+  const [jawabanUser, setJawabanUser] = useState({}); 
   const [soalAktifIndex, setSoalAktifIndex] = useState(0);
 
-  // 3. LOGIKA PENGAMBILAN DATA
   useEffect(() => {
     const fetchPembahasan = async () => {
       setLoading(true);
@@ -66,7 +90,6 @@ export default function PembahasanPage() {
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         if (sessionError || !session) throw new Error("Akses ditolak. Silakan login ulang.");
         
-        // 4. Panggil API backend 'getPembahasan' kita
         const res = await fetch(`/api/test/getPembahasan?history_id=${historyId}`, {
           headers: {
             'Authorization': `Bearer ${session.access_token}`
@@ -92,7 +115,6 @@ export default function PembahasanPage() {
     fetchPembahasan();
   }, [historyId]);
 
-  // --- Tampilan Render ---
   if (loading) return <LoadingScreen />;
   if (error) return (
     <div className="text-center py-20 text-red-600">
@@ -110,7 +132,6 @@ export default function PembahasanPage() {
   return (
     <div className="max-w-4xl mx-auto py-8">
       
-      {/* Tombol kembali */}
       <Link to="/history" className="text-blue-600 hover:underline mb-4 inline-block">
         &larr; Kembali ke Riwayat
       </Link>
@@ -142,21 +163,17 @@ export default function PembahasanPage() {
       
       {/* Kotak Soal */}
       <div className="bg-white p-6 shadow-md rounded-lg">
-        {/* 5. Kita gunakan ulang SoalDisplay! */}
-        {/* Kita buat 'dummy' onSelect agar tidak error, tapi tidak melakukan apa-apa */}
         <SoalDisplay 
           soal={soalAktif}
           jawaban={jawabanSoalIni}
-          onSelectJawaban={() => {}} // Tidak bisa ganti jawaban di mode pembahasan
+          onSelectJawaban={() => {}}
         />
         
-        {/* 6. Tampilkan Box Pembahasan */}
         <PembahasanBox 
           soal={soalAktif}
           jawabanUser={jawabanSoalIni}
         />
       </div>
-
     </div>
   );
-}
+  }
