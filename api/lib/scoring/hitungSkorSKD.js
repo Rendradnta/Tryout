@@ -2,8 +2,8 @@
  * Fungsi ini menghitung skor SKD berdasarkan jawaban user dan kunci.
  * @param {Object} jawabanUser - Objek jawaban dari user, misal: { "soal-id-1": "A", "soal-id-2": "C", ... }
  * @param {Array} kunciJawabanPaket - Array berisi objek kunci dari database
- * Contoh 1 (TWK/TIU): { id: "soal-id-1", subtes: "twk", kunci_jawaban: { "kunci": "A" } }
- * Contoh 2 (TKP): { id: "soal-id-2", subtes: "tkp", kunci_jawaban: { "A": 5, "B": 4, "C": 3, "D": 2, "E": 1 } }
+ * Contoh 1 (TWK/TIU): { id: "soal-id-1", subtes_id: "twk", kunci_jawaban: { "kunci": "A" } }
+ * Contoh 2 (TKP): { id: "soal-id-2", subtes_id: "tkp", kunci_jawaban: { "A": 5, "B": 4, "C": 3, "D": 2, "E": 1 } }
  * @param {Object} passingGrade - Objek passing grade, misal: { twk: 65, tiu: 80, tkp: 156 }
  * @returns {Object} - Objek hasil skor
  */
@@ -15,7 +15,13 @@ export async function hitungSkorSKD(jawabanUser, kunciJawabanPaket, passingGrade
   // Loop melalui setiap soal di paket tersebut
   for (const kunciSoal of kunciJawabanPaket) {
     const idSoal = kunciSoal.id;
-    const subtes = kunciSoal.subtes;
+    
+    // --- PERBAIKAN DI SINI ---
+    // LAMA: const subtes = kunciSoal.subtes;
+    // BARU: const subtes = kunciSoal.subtes_id;
+    // (Nama kolom 'subtes_id' Anda diasumsikan berisi 'twk', 'tiu', atau 'tkp')
+    const subtes = kunciSoal.subtes_id; 
+
     const jawaban = jawabanUser[idSoal]; // Jawaban user untuk soal ini
 
     // Jika user tidak menjawab, skor 0
@@ -42,7 +48,6 @@ export async function hitungSkorSKD(jawabanUser, kunciJawabanPaket, passingGrade
   // Hitung total dan cek status lulus
   const skorTotal = skorTWK + skorTIU + skorTKP;
   
-  // Cek passing grade (jika ada)
   let statusLulus = null;
   if (passingGrade) {
      statusLulus = (
@@ -62,4 +67,4 @@ export async function hitungSkorSKD(jawabanUser, kunciJawabanPaket, passingGrade
       tkp: skorTKP
     }
   };
-      }
+}
