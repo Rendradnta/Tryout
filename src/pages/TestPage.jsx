@@ -2,12 +2,10 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 
-// 1. Impor Komponen (Timer, SoalDisplay, NavigasiSoal)
 import Timer from '../components/test/Timer.jsx';
 import SoalDisplay from '../components/test/SoalDisplay.jsx';
 import NavigasiSoal from '../components/test/NavigasiSoal.jsx';
 
-// Komponen Loading Awal
 const LoadingScreen = () => (
   <div className="text-center py-20">
     <p className="text-2xl font-semibold text-gray-700 animate-pulse">
@@ -28,12 +26,15 @@ export default function TestPage() {
   const [jawabanUser, setJawabanUser] = useState({}); 
   const [waktuMulai] = useState(new Date()); 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // --- STATE BARU UNTUK TIMER ---
+  const [sisaDetik, setSisaDetik] = useState(null); // Sisa waktu (akan dihitung)
 
   // --- STATE NAVIGASI ---
   const [soalAktifIndex, setSoalAktifIndex] = useState(0); 
   const [subtesAktifIndex, setSubtesAktifIndex] = useState(0); 
 
-  // --- 2. LOGIKA PENGAMBILAN DATA ---
+  // --- LOGIKA PENGAMBILAN DATA (DIMODIFIKASI) ---
   useEffect(() => {
     const fetchTest = async () => {
       setLoading(true);
@@ -43,9 +44,7 @@ export default function TestPage() {
         if (sessionError || !session) throw new Error("Akses ditolak. Silakan login ulang.");
         
         const res = await fetch(`/api/test/getSoal?paket_id=${paketId}`, {
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`
-          }
+          headers: { 'Authorization': `Bearer ${session.access_token}` }
         });
         
         if (!res.ok) {
@@ -57,6 +56,34 @@ export default function TestPage() {
         
         setSoals(soalsData);
         setConfig(configData);
+
+        // --- LOGIKA TIMER BARU (Memperbaiki Bug) ---
+        // 1. Tentukan kunci penyimpanan timer
+        // (Kita buat 1 kunci per subtes untuk UTBK)
+        const storageKey = `waktuSelesai_${paketId}_subtes_${subtesAktifIndex}`;
+        let endTime = localStorage.getItem(storageKey);
+
+        // 2. Jika timer belum ada (atau refresh ke subtes baru)
+        if (!endTime) {
+          let totalDurationInSeconds;
+          if (configData.tipe_ujian === 'skd') {
+            totalDurationInSeconds = configData.waktu_total_menit * 60;
+          } else {
+            // Cek jika config_subtes ada
+            if (!configData.config_subtes || !configData.config_subtes[subtesAktifIndex]) {
+              throw new Error("Konfigurasi subtes tidak ditemukan.");
+            }
+            totalDurationInSeconds = configData.config_subtes[subtesAktifIndex].waktu * 60;
+          }
+          
+          endTime = new Date().getTime() + totalDurationInSeconds * 1000;
+          localStorage.setItem(storageKey, endTime);
+        }
+
+        // 3. Hitung sisa waktu
+        const sisa = Math.round((parseInt(endTime, 10) - new Date().getTime()) / 1000);
+        setSisaDetik(sisa > 0 ? sisa : 0); // Set sisa waktu
+        
       } catch (err) {
         setError(err.message);
       } finally {
@@ -64,9 +91,9 @@ export default function TestPage() {
       }
     };
     fetchTest();
-  }, [paketId]);
+  }, [paketId, subtesAktifIndex]); // 4. Jalankan ulang jika paketId ATAU subtesAktifIndex berubah
 
-  // --- 3. LOGIKA KHUSUS UTBK (MEMOIZED) ---
+  // --- LOGIKA KHUSUS UTBK ---
   const subtesRanges = useMemo(() => {
     if (config?.tipe_ujian !== 'utbk' || !config.config_subtes) return [];
     let startIndex = 0;
@@ -90,11 +117,9 @@ export default function TestPage() {
     return null;
   }, [config, subtesAktifIndex, subtesRanges]);
 
-  // --- 4. LOGIKA HANDLER (FUNGSI AKSI) ---
-  // 
-  // --- INI PERBAIKANNYA ---
-  // 'handleSubmitTest' sekarang dideklarasikan SEBELUM 'handleTimeUp'
-  //
+  // --- LOGIKA HANDLER (FUNGSI AKSI) ---
+  
+  // (handleSubmitTest tetap sama seperti File 73)
   const handleSubmitTest = useCallback(async () => {
     if (isSubmitting) return;
     setIsSubmitting(true);
@@ -111,6 +136,12 @@ export default function TestPage() {
         waktu_selesai: new Date().toISOString()
       };
       
+      // Hapus semua timer dari localStorage saat submit
+      localStorage.removeItem(`waktuSelesai_${paketId}_subtes_0`);
+      localStorage.removeItem(`waktuSelesai_${paketId}_subtes_1`);
+      // (Tambahkan jika subtes lebih banyak)
+      localStorage.removeItem(`waktuSelesai_${paketId}_subtes_${subtesAktifIndex}`);
+
       const res = await fetch('/api/test/submit', {
         method: 'POST',
         headers: {
@@ -131,48 +162,38 @@ export default function TestPage() {
       setError(`Gagal submit: ${err.message}`);
       setIsSubmitting(false); 
     }
-  }, [isSubmitting, paketId, config, jawabanUser, waktuMulai, navigate]);
+  }, [isSubmitting, paketId, config, jawabanUser, waktuMulai, navigate, subtesAktifIndex]);
 
-
-  // Dipanggil oleh Timer saat waktu habis
+  // (handleTimeUp tetap sama seperti File 73)
   const handleTimeUp = useCallback(() => {
     if (config?.tipe_ujian === 'skd') {
-      handleSubmitTest(); // Waktu total SKD habis
+      handleSubmitTest();
     } 
     else if (config?.tipe_ujian === 'utbk') {
       const isLastSubtest = (subtesAktifIndex === subtesRanges.length - 1);
       if (isLastSubtest) {
-        handleSubmitTest(); // Waktu subtes terakhir habis
+        handleSubmitTest();
       } else {
-        // Pindah ke subtes berikutnya
         const nextSubtesIndex = subtesAktifIndex + 1;
-        setSubtesAktifIndex(nextSubtesIndex);
+        setSubtesAktifIndex(nextSubtesIndex); // Ini akan memicu useEffect untuk timer baru
         setSoalAktifIndex(subtesRanges[nextSubtesIndex].startIndex);
       }
     }
-  }, [config, subtesAktifIndex, subtesRanges, handleSubmitTest]); // Sekarang 'handleSubmitTest' sudah aman
+  }, [config, subtesAktifIndex, subtesRanges, handleSubmitTest]); 
 
-  // Menyimpan jawaban user ke state
+  // (handleSelectJawaban tetap sama)
   const handleSelectJawaban = (soalId, jawaban) => {
     setJawabanUser(prev => ({ ...prev, [soalId]: jawaban }));
   };
 
   // --- 5. LOGIKA TAMPILAN (RENDER) ---
-  if (loading) return <LoadingScreen />;
+  
+  // (Tampilan Loading & Error tetap sama)
+  if (loading || sisaDetik === null) return <LoadingScreen />;
   if (error) return <div className="text-center py-20 text-red-600">Error: {error}</div>;
   if (!config || !soals.length) return <div className="text-center py-20">Paket soal tidak ditemukan.</div>;
 
-  // Tentukan Timer
-  let timerDurationInSeconds;
-  let timerKey = 'skd';
-  if (config.tipe_ujian === 'skd') {
-    timerDurationInSeconds = config.waktu_total_menit * 60;
-  } else if (subtesAktif) {
-    timerDurationInSeconds = subtesAktif.waktuMenit * 60;
-    timerKey = subtesAktif.index; 
-  }
-
-  // Tentukan soal mana yang boleh dinavigasi
+  // (Logika Navigasi tetap sama)
   const navProps = {
     soals: soals,
     jawabanUser: jawabanUser,
@@ -183,7 +204,6 @@ export default function TestPage() {
       : { start: 0, end: soals.length - 1 }
   };
   
-  // Tentukan batas tombol Next/Prev
   const batasBawah = navProps.range.start;
   const batasAtas = navProps.range.end;
 
@@ -191,15 +211,19 @@ export default function TestPage() {
     <div className="flex flex-col md:flex-row h-screen-minus-navbar">
       {/* Kolom Kiri (Navigasi & Timer) */}
       <aside className="w-full md:w-1/4 lg:w-1/5 p-4 bg-gray-50 border-r overflow-y-auto">
+        
+        {/* --- TIMER DIMODIFIKASI --- */}
+        {/* 'key' diubah agar unik per subtes */}
         <Timer 
-          key={timerKey} 
-          durationInSeconds={timerDurationInSeconds} 
+          key={`timer-${paketId}-${subtesAktifIndex}`} 
+          durationInSeconds={sisaDetik} // Kita kirim SISA WAKTU
           onTimeUp={handleTimeUp}
         />
         
         <h3 className="text-lg font-semibold mt-4 mb-2">Navigasi Soal</h3>
         <NavigasiSoal {...navProps} />
         
+        {/* ... (Tombol Selesai SKD tetap sama) ... */}
         {config.tipe_ujian === 'skd' && (
           <button
             onClick={handleSubmitTest}
@@ -213,18 +237,19 @@ export default function TestPage() {
 
       {/* Kolom Kanan (Soal & Kontrol) */}
       <main className="w-full md:w-3/4 lg:w-4/5 p-6 md:p-10 overflow-y-auto">
+        {/* ... (Header Soal tetap sama) ... */}
         <h2 className="text-xl font-bold text-blue-700 mb-4">
           {config.tipe_ujian === 'utbk' ? subtesAktif?.nama : config.judul}
         </h2>
         
-        {/* Komponen Soal */}
+        {/* ... (SoalDisplay tetap sama) ... */}
         <SoalDisplay 
           soal={soals[soalAktifIndex]}
           jawaban={soals[soalAktifIndex] ? jawabanUser[soals[soalAktifIndex].id] : undefined}
           onSelectJawaban={handleSelectJawaban}
         />
         
-        {/* Kontrol Bawah (Next/Prev) */}
+        {/* ... (Kontrol Bawah tetap sama) ... */}
         <hr className="my-8" />
         <div className="flex justify-between items-center">
           <button
@@ -250,4 +275,4 @@ export default function TestPage() {
       </main>
     </div>
   );
-    }
+}
