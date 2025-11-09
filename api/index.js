@@ -164,7 +164,7 @@ app.route('/auth', authRoutes);
 app.route('/test', testRoutes);
 app.route('/user', userRoutes); 
 
-// 5. Tambahkan Rute Cron Langsung ke App
+// 5. Rute Cron (DENGAN PERBAIKAN)
 app.post('/cron/prosesSkor', async (c) => {
   const authHeader = c.req.header('authorization');
   if (authHeader !== `Bearer ${cronSecret}`) {
@@ -178,14 +178,15 @@ app.post('/cron/prosesSkor', async (c) => {
   for (const dataSubmit of antrian) {
     const data = dataSubmit;
     
-    // Ambil Kunci Jawaban
+    // --- PERBAIKAN DI SINI ---
+    // Mengganti 'subtes' dengan 'subtes_id'
     const { data: kunciJawabanPaket, error: kunciError } = await supabaseAdmin
       .from('soal')
-      .select('id, subtes, tipe_soal, kunci_jawaban')
+      .select('id, subtes_id, tipe_soal, kunci_jawaban')
       .eq('paket_id', data.paket_id);
       
     if(kunciError || !kunciJawabanPaket) {
-       console.error(`Gagal ambil kunci untuk paket ${data.paket_id}`);
+       console.error(`Gagal ambil kunci untuk paket ${data.paket_id}: ${kunciError?.message}`);
        continue;
     }
     let hasilSkor;
