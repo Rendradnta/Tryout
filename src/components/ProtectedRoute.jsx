@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { Navigate } from 'react-router-dom';
 
-// Kita bisa gunakan komponen LoadingSpinner yang baru
-// (Jika belum ada, ganti dengan <div><p>Loading...</p></div>)
+// Impor komponen loading Anda
 import LoadingSpinner from './shared/LoadingSpinner.jsx'; 
 
 /**
@@ -11,42 +10,64 @@ import LoadingSpinner from './shared/LoadingSpinner.jsx';
  */
 export default function ProtectedRoute({ children, adminOnly = false }) {
   const [authLoading, setAuthLoading] = useState(true); 
-  const [userRole, setUserRole] = useState(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userRole, setUserRole] = useState(null);
 
   useEffect(() => {
-    // onAuthStateChange adalah listener terbaik
-    // Ia akan berjalan saat load awal DAN saat login/logout
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        try {
-          if (session) {
-            setIsLoggedIn(true);
-            // Ambil role user
-            const { data: profile, error } = await supabase
-              .from('profiles')
-              .select('role')
-              .eq('id', session.user.id)
-              .single();
-            
-            if (error) {
-              console.error("ProtectedRoute: Gagal ambil profil", error.message);
-              throw error; // Lempar error agar ditangkap catch
-            }
-            setUserRole(profile.role);
+    
+    // --- INI LOGIKA YANG BARU DAN LENGKAP ---
+
+    // 1. Fungsi untuk mengecek sesi aktif & profil
+    const checkUserSession = async () => {
+      try {
+        // Cek sesi yang ada SAAT INI
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (session) {
+          setIsLoggedIn(true);
+          // Ambil role user
+          const { data: profile, error } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', session.user.id)
+            .single();
+          
+          if (error) {
+            console.error("ProtectedRoute: Gagal ambil profil", error.message);
+            setUserRole(null); // Gagal ambil role
           } else {
-            setIsLoggedIn(false);
-            setUserRole(null);
+            setUserRole(profile.role);
           }
-        } catch (error) {
-          // Jika gagal (misal RLS), setidaknya catat
-          console.error("Error di dalam listener auth:", error.message);
+        } else {
           setIsLoggedIn(false);
           setUserRole(null);
-        } finally {
-          // --- INI ADALAH PERBAIKANNYA ---
-          // Pastikan loading SELALU berhenti
-          setAuthLoading(false);
+        }
+      } catch (e) {
+        console.error("Error di checkUserSession:", e.message);
+        setIsLoggedIn(false);
+        setUserRole(null);
+      } finally {
+        // Apapun yang terjadi, hentikan loading
+        setAuthLoading(false);
+      }
+    };
+    
+    // 2. Jalankan pengecekan itu saat komponen pertama kali dimuat
+    checkUserSession();
+
+    // 3. Tetap pasang listener untuk MENDENGARKAN PERUBAHAN
+    // (misal: user login/logout di tab lain)
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (event === 'SIGNED_IN') {
+          // Jika user baru login, jalankan ulang pengecekan
+          setAuthLoading(true); // Tampilkan loading lagi
+          checkUserSession();
+        }
+        if (event === 'SIGNED_OUT') {
+          setIsLoggedIn(false);
+          setUserRole(null);
+          setAuthLoading(false); // Langsung hentikan loading
         }
       }
     );
@@ -57,8 +78,9 @@ export default function ProtectedRoute({ children, adminOnly = false }) {
     };
   }, []); // Jalankan sekali
 
-  // --- Logika Pengecekan ---
+  // --- Logika Pengecekan (Render) ---
 
+  // Tampilkan loading HANYA jika kita masih mengecek
   if (authLoading) {
     return (
       <div className="mt-20">
@@ -67,14 +89,16 @@ export default function ProtectedRoute({ children, adminOnly = false }) {
     );
   }
 
+  // Jika sudah tidak loading, DAN tidak login, tendang
   if (!isLoggedIn) {
     return <Navigate to="/login" replace />;
   }
 
+  // Jika butuh admin, TAPI role-nya bukan admin, tendang
   if (adminOnly && userRole !== 'admin') {
     return <Navigate to="/" replace />;
   }
 
-  // JIKA LOLOS SEMUA: Tampilkan halaman (Dashboard/Admin)
+  // JIKA LOLOS SEMUA: Tampilkan halaman
   return children;
 }
