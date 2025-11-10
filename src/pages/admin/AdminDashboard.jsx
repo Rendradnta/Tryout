@@ -1,29 +1,40 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, NavLink, Link } from 'react-router-dom';
+import { Routes, Route, NavLink, Link, Navigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
+import { motion } from 'framer-motion';
 
-// Impor Halaman Admin (yang akan kita buat selanjutnya)
+// --- Impor Ikon ---
+import {
+  Package,        // Untuk Paket Soal
+  LayoutList,     // Untuk Soal
+  FilePlus,       // Untuk Tambah Soal
+  Edit3,          // Untuk Edit
+  Trash2          // Untuk Hapus
+} from 'lucide-react';
+
+// --- Impor Halaman Admin ---
+// (File-file ini sudah ada)
 import AdminTambahSoal from './AdminTambahSoal.jsx';
 import AdminEditSoal from './AdminEditSoal.jsx';
+// (Ini file BARU yang kita buat di Langkah 3)
+import ManajemenPaket from './ManajemenPaket.jsx';
 
-// --- 1. Komponen Internal untuk Daftar Soal ---
-// (Kita letakkan di sini agar sesuai file list Anda)
-// Komponen ini akan di-render di path default ('/admin')
+
+// --- Komponen Internal: SoalList (TETAP SAMA) ---
+// (Logika ini tetap sama seperti di File 92, tidak perlu diubah)
 const SoalList = () => {
   const [soalList, setSoalList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Fungsi untuk mengambil daftar soal dari API
   const fetchDaftarSoal = async () => {
     setLoading(true);
     setError(null);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("Akses ditolak. Silakan login ulang.");
+      if (!session) throw new Error("Akses ditolak.");
 
-      // Panggil API admin yang sudah kita buat
-      const res = await fetch('/api/admin/soal', {
+      const res = await fetch('/api/admin/soal', { // Memanggil API Hono (sudah benar)
         headers: { 'Authorization': `Bearer ${session.access_token}` }
       });
       
@@ -41,14 +52,11 @@ const SoalList = () => {
     }
   };
 
-  // Ambil data saat komponen dimuat
   useEffect(() => {
     fetchDaftarSoal();
   }, []);
 
-  // Fungsi untuk menghapus soal
   const handleDelete = async (soalId) => {
-    // Tampilkan konfirmasi
     if (!window.confirm("Apakah Anda yakin ingin menghapus soal ini?")) {
       return;
     }
@@ -57,8 +65,7 @@ const SoalList = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Akses ditolak.");
 
-      // Panggil API hapus soal yang sudah kita buat
-      const res = await fetch(`/api/admin/soal?id=${soalId}`, {
+      const res = await fetch(`/api/admin/soal?id=${soalId}`, { // Memanggil API Hono (sudah benar)
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${session.access_token}` }
       });
@@ -68,7 +75,6 @@ const SoalList = () => {
         throw new Error(errData.error || "Gagal menghapus soal.");
       }
       
-      // Sukses! Muat ulang daftar soal dari server
       alert("Soal berhasil dihapus!");
       fetchDaftarSoal(); 
     } catch (err) {
@@ -76,108 +82,135 @@ const SoalList = () => {
     }
   };
 
-  // --- Tampilan render untuk SoalList ---
   if (loading) return <p className="text-gray-600">Memuat daftar soal...</p>;
   if (error) return <p className="text-red-500">Error: {error}</p>;
 
   return (
-    <div className="bg-white shadow-md rounded-lg overflow-x-auto">
-      <table className="w-full text-sm text-left text-gray-500">
-        <thead className="text-xs text-gray-700 uppercase bg-gray-100">
-          <tr>
-            <th scope="col" className="py-3 px-6">No.</th>
-            <th scope="col" className="py-3 px-6">Cuplikan Teks Soal</th>
-            <th scope="col" className="py-3 px-6">Tipe</th>
-            <th scope="col" className="py-3 px-6">Aksi</th>
-          </tr>
-        </thead>
-        <tbody>
-          {soalList.length === 0 ? (
+    <div className="bg-white shadow-xl rounded-2xl overflow-hidden">
+      <div className="p-5 flex justify-between items-center">
+        <h2 className="text-xl font-semibold text-gray-800">Manajemen Soal</h2>
+        <Link 
+          to="/admin/soal/tambah"
+          className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-md transition-colors hover:bg-blue-700"
+        >
+          <FilePlus className="h-4 w-4" />
+          Tambah Soal
+        </Link>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm text-left text-gray-500">
+          <thead className="text-xs text-gray-700 uppercase bg-gray-50">
             <tr>
-              <td colSpan="4" className="text-center py-10 text-gray-500">
-                Belum ada soal. Silakan tambah soal baru.
-              </td>
+              <th scope="col" className="py-3 px-6">No.</th>
+              <th scope="col" className="py-3 px-6">Cuplikan Teks Soal</th>
+              <th scope="col" className="py-3 px-6">Tipe</th>
+              <th scope="col" className="py-3 px-6">Aksi</th>
             </tr>
-          ) : (
-            soalList.map((soal) => (
-              <tr key={soal.id} className="bg-white border-b hover:bg-gray-50">
-                <td className="py-4 px-6 font-medium">{soal.nomor_soal || '-'}</td>
-                <td className="py-4 px-6 text-gray-900">
-                  {/* Tampilkan cuplikan soal, hapus tag HTML */}
-                  {soal.teks_soal.replace(/<[^>]+>/g, '').substring(0, 70)}...
-                </td>
-                <td className="py-4 px-6">{soal.tipe_soal}</td>
-                <td className="py-4 px-6 space-x-3 whitespace-nowrap">
-                  <Link 
-                    to={`/admin/edit/${soal.id}`} 
-                    className="font-medium text-blue-600 hover:underline"
-                  >
-                    Edit
-                  </Link>
-                  <button
-                    onClick={() => handleDelete(soal.id)}
-                    className="font-medium text-red-600 hover:underline"
-                  >
-                    Hapus
-                  </button>
+          </thead>
+          <tbody>
+            {soalList.length === 0 ? (
+              <tr>
+                <td colSpan="4" className="text-center py-10 text-gray-500">
+                  Belum ada soal. Silakan tambah soal baru.
                 </td>
               </tr>
-            ))
-          )}
-        </tbody>
-      </table>
+            ) : (
+              soalList.map((soal) => (
+                <tr key={soal.id} className="bg-white border-b hover:bg-gray-50">
+                  <td className="py-4 px-6 font-medium">{soal.nomor_soal || '-'}</td>
+                  <td className="py-4 px-6 text-gray-900">
+                    {soal.teks_soal.replace(/<[^>]+>/g, '').substring(0, 70)}...
+                  </td>
+                  <td className="py-4 px-6">{soal.tipe_soal}</td>
+                  <td className="py-4 px-6 space-x-3 whitespace-nowrap">
+                    <Link 
+                      to={`/admin/soal/edit/${soal.id}`} 
+                      className="font-medium text-blue-600 hover:underline"
+                    >
+                      <Edit3 className="inline h-4 w-4" /> Edit
+                    </Link>
+                    <button
+                      onClick={() => handleDelete(soal.id)}
+                      className="font-medium text-red-600 hover:underline"
+                    >
+                      <Trash2 className="inline h-4 w-4" /> Hapus
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 };
 
 
-// --- 2. Komponen Utama AdminDashboard (Layout) ---
+// --- Komponen Utama AdminDashboard (LAYOUT BARU) ---
 export default function AdminDashboard() {
+  
   // Fungsi helper untuk styling NavLink (Link navigasi)
+  // Ini adalah style "premium" yang modern
   const navLinkClass = ({ isActive }) =>
-    `block p-3 rounded-md transition-colors ${
-      isActive
-        ? 'bg-blue-600 text-white font-medium'
-        : 'bg-gray-100 hover:bg-gray-200'
-    }`;
+    `flex items-center gap-3 rounded-lg px-4 py-3 transition-colors
+     ${isActive
+       ? 'bg-blue-100 text-blue-700 font-semibold shadow-inner' // Style Aktif
+       : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' // Style Non-Aktif
+     }`;
 
   return (
-    <div className="flex flex-col md:flex-row gap-6 md:gap-10">
+    <div className="flex flex-col gap-8 md:flex-row md:gap-10">
       
-      {/* --- Sidebar Navigasi Admin --- */}
-      <aside className="w-full md:w-1/4 lg:w-1/5 flex-shrink-0">
-        <h2 className="text-xl font-bold mb-4">Admin Panel</h2>
-        <nav className="flex flex-col space-y-2">
-          {/* Link ke '/admin' (Menampilkan SoalList) */}
-          <NavLink to="/admin" end className={navLinkClass}>
-            Manajemen Soal
-          </NavLink>
-          {/* Link ke '/admin/tambah' (Menampilkan AdminTambahSoal) */}
-          <NavLink to="/admin/tambah" className={navLinkClass}>
-            + Tambah Soal Baru
-          </NavLink>
-          {/* Anda bisa tambahkan link lain di sini, misal:
-          <NavLink to="/admin/users" className={navLinkClass}>
-            Manajemen User
-          </NavLink> 
-          */}
-        </nav>
+      {/* --- Sidebar Navigasi Admin (DESAIN BARU) --- */}
+      <aside className="w-full flex-shrink-0 md:w-1/4 lg:w-1/5">
+        <div className="sticky top-24 rounded-2xl bg-white p-4 shadow-lg">
+          <h2 className="mb-4 text-xs font-semibold uppercase text-gray-400">
+            Menu Admin
+          </h2>
+          <nav className="flex flex-col space-y-2">
+            
+            {/* --- LINK BARU (LANGKAH 3) --- */}
+            <NavLink to="/admin/paket" className={navLinkClass}>
+              <Package className="h-5 w-5" />
+              Manajemen Paket
+            </NavLink>
+            
+            <NavLink to="/admin/soal" className={navLinkClass}>
+              <LayoutList className="h-5 w-5" />
+              Manajemen Soal
+            </NavLink>
+            
+            {/* Anda bisa tambahkan link lain di sini */}
+            
+          </nav>
+        </div>
       </aside>
 
-      {/* --- Area Konten Utama (Tempat Halaman Berubah) --- */}
-      <main className="w-full md:w-3/4 lg:w-4/5">
-        <Routes>
-          {/* Rute 1: '/admin' (root) */}
-          <Route path="/" element={<SoalList />} /> 
-          
-          {/* Rute 2: '/admin/tambah' */}
-          <Route path="tambah" element={<AdminTambahSoal />} />
-          
-          {/* Rute 3: '/admin/edit/:soalId' (dinamis) */}
-          <Route path="edit/:soalId" element={<AdminEditSoal />} />
-        </Routes>
+      {/* --- Area Konten Utama (RUTE BARU) --- */}
+      <main className="w-full">
+        {/* Kita gunakan motion.div untuk animasi fade-in sederhana */}
+        <motion.div
+          key={location.pathname} // Kunci ini penting agar animasi berjalan saat rute berubah
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <Routes>
+            {/* Rute Default: Arahkan ke Manajemen Paket */}
+            <Route index element={<Navigate to="paket" replace />} />
+            
+            {/* Rute BARU (LANGKAH 3) */}
+            <Route path="paket" element={<ManajemenPaket />} />
+            
+            {/* Rute-rute lama untuk Soal */}
+            <Route path="soal" element={<SoalList />} /> 
+            <Route path="soal/tambah" element={<AdminTambahSoal />} />
+            <Route path="soal/edit/:soalId" element={<AdminEditSoal />} />
+          </Routes>
+        </motion.div>
       </main>
       
     </div>
   );
-}
+    }
