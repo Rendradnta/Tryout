@@ -13,6 +13,8 @@ import {
   Trash2
 } from 'lucide-react';
 
+import LoadingSpinner from '../../components/shared/LoadingSpinner.jsx';
+
 // --- Impor Halaman Admin ---
 import AdminTambahSoal from './AdminTambahSoal.jsx';
 import AdminEditSoal from './AdminEditSoal.jsx';
