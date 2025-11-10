@@ -103,7 +103,7 @@ export default function Navbar() {
           {/* 1. Logo, Judul, dan Subjudul (Sisi Kiri) */}
           <Link to="/" className="flex items-center gap-3 z-10">
             <img 
-              src="/logo-rs.jpg" // Pastikan ada di folder 'public/logo-rs.jpg'
+              src="/logo.png" // Pastikan ada di folder 'public/logo-rs.jpg'
               alt="Logo RS" 
               className="h-10 w-10 rounded-full border-2 border-white/50"
               onError={(e) => { e.currentTarget.style.display = 'none'; }}
@@ -124,7 +124,7 @@ export default function Navbar() {
               user ? (
                 // --- Tampilan Jika Sudah Login (Desktop) ---
                 <>
-                  <NavLink to="/dashboard" className={({isActive}) => `text-sm font-medium ${isActive ? 'text-white border-b-2' : 'text-blue-100 hover:text-white'}`}>
+                  <NavLink to="/" className={({isActive}) => `text-sm font-medium ${isActive ? 'text-white border-b-2' : 'text-blue-100 hover:text-white'}`}>
                     Dashboard
                   </NavLink>
                   <NavLink to="/history" className={({isActive}) => `text-sm font-medium ${isActive ? 'text-white border-b-2' : 'text-blue-100 hover:text-white'}`}>
