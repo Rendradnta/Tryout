@@ -2,46 +2,52 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { Navigate } from 'react-router-dom';
 
-// Kita gunakan komponen Loading kustom Anda
+// Kita bisa gunakan komponen LoadingSpinner yang baru
+// (Jika belum ada, ganti dengan <div><p>Loading...</p></div>)
 import LoadingSpinner from './shared/LoadingSpinner.jsx'; 
 
 /**
  * Komponen ini melindungi rute.
  */
 export default function ProtectedRoute({ children, adminOnly = false }) {
-  // --- PERBAIKAN DI SINI ---
-  // Kita tambahkan state 'authLoading'
   const [authLoading, setAuthLoading] = useState(true); 
   const [userRole, setUserRole] = useState(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
-    // Kita gunakan onAuthStateChange karena ini yang paling akurat.
-    // Ini akan berjalan saat load DAN saat login/logout.
+    // onAuthStateChange adalah listener terbaik
+    // Ia akan berjalan saat load awal DAN saat login/logout
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        if (session) {
-          setIsLoggedIn(true);
-          // Ambil role user
-          try {
+        try {
+          if (session) {
+            setIsLoggedIn(true);
+            // Ambil role user
             const { data: profile, error } = await supabase
               .from('profiles')
               .select('role')
               .eq('id', session.user.id)
               .single();
             
-            if (error) throw error;
+            if (error) {
+              console.error("ProtectedRoute: Gagal ambil profil", error.message);
+              throw error; // Lempar error agar ditangkap catch
+            }
             setUserRole(profile.role);
-          } catch (error) {
-            console.error("Error fetching user profile:", error.message);
+          } else {
+            setIsLoggedIn(false);
             setUserRole(null);
           }
-        } else {
+        } catch (error) {
+          // Jika gagal (misal RLS), setidaknya catat
+          console.error("Error di dalam listener auth:", error.message);
           setIsLoggedIn(false);
           setUserRole(null);
+        } finally {
+          // --- INI ADALAH PERBAIKANNYA ---
+          // Pastikan loading SELALU berhenti
+          setAuthLoading(false);
         }
-        // Selesai mengecek, matikan loading
-        setAuthLoading(false);
       }
     );
 
@@ -53,7 +59,6 @@ export default function ProtectedRoute({ children, adminOnly = false }) {
 
   // --- Logika Pengecekan ---
 
-  // 1. Tampilkan loading jika kita BELUM SELESAI mengecek auth
   if (authLoading) {
     return (
       <div className="mt-20">
@@ -62,17 +67,14 @@ export default function ProtectedRoute({ children, adminOnly = false }) {
     );
   }
 
-  // 2. Jika sudah selesai, DAN TIDAK login, tendang ke Login
   if (!isLoggedIn) {
     return <Navigate to="/login" replace />;
   }
 
-  // 3. Jika sudah login, DAN butuh admin, TAPI role-nya BUKAN admin
   if (adminOnly && userRole !== 'admin') {
-    // Tendang ke halaman utama (Dashboard)
     return <Navigate to="/" replace />;
   }
 
-  // 4. JIKA LOLOS SEMUA: Tampilkan halaman (Dashboard/Admin)
+  // JIKA LOLOS SEMUA: Tampilkan halaman (Dashboard/Admin)
   return children;
-              }
+}
