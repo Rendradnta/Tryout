@@ -18,6 +18,8 @@ import {
   Repeat1
 } from 'lucide-react';
 
+import LoadingSpinner from '../../components/shared/LoadingSpinner.jsx';
+
 // --- Komponen 1: Form Pembuatan Paket (Bisa diciutkan) ---
 const PaketCreateForm = ({ onPaketCreated }) => {
   const [judul, setJudul] = useState('');
