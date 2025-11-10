@@ -200,7 +200,7 @@ export default function Navbar() {
               user ? (
                 // --- Tampilan Jika Sudah Login (Mobile) ---
                 <div className="flex flex-col space-y-1 p-4">
-                  <MobileNavLink to="/dashboard" icon={LayoutDashboard} text="Dashboard" onClick={() => setIsMobileMenuOpen(false)} />
+                  <MobileNavLink to="/" icon={LayoutDashboard} text="Dashboard" onClick={() => setIsMobileMenuOpen(false)} />
                   <MobileNavLink to="/history" icon={History} text="Riwayat" onClick={() => setIsMobileMenuOpen(false)} />
                   <MobileNavLink to="/peringkat" icon={BarChart3} text="Peringkat" onClick={() => setIsMobileMenuOpen(false)} />
                   {user.role === 'admin' && (
