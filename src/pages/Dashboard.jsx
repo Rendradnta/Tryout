@@ -1,16 +1,16 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 
-// Impor Ikon (sudah terinstal dari navbar)
+// Impor Ikon (menambahkan CheckSquare untuk tombol 'disabled')
 import { 
-  Award,       // Untuk Skor Terbaik
-  Target,      // Untuk Rata-rata
-  CheckSquare, // Untuk Total Tes
-  BookOpen,    // Untuk Paket Soal
-  ArrowRight,  // Untuk Tombol
-  FileText     // Untuk Riwayat
+  Award,
+  Target,
+  CheckSquare, // <-- IKON BARU
+  BookOpen,
+  ArrowRight,
+  FileText 
 } from 'lucide-react';
 
 // Impor komponen Loading Anda
@@ -40,47 +40,68 @@ const StatCard = ({ title, value, icon, color }) => {
   );
 };
 
-// --- Komponen Internal: Kartu Paket Ujian ---
+// --- Komponen Internal: Kartu Paket Ujian (DIMODIFIKASI) ---
 const PaketCard = ({ paket, index }) => {
   const isUTBK = paket.tipe_ujian === 'utbk';
-  const tagColor = isUTBK 
-    ? 'bg-blue-100 text-blue-800' 
-    : 'bg-green-100 text-green-800';
-  const hoverColor = isUTBK 
-    ? 'hover:border-blue-500' 
-    : 'hover:border-green-500';
+  const tagColor = isUTBK ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800';
+  
+  // --- LOGIKA BARU (LANGKAH 5) ---
+  // Cek apakah paket ini punya batas pengerjaan
+  const isOneTimeTry = paket.max_attempts === 1;
+  // Cek apakah user sudah mengerjakannya
+  const hasAttempted = paket.attempts_taken >= 1;
+  // Kunci tombol jika ini 1x Coba DAN user sudah mengerjakan
+  const isLocked = isOneTimeTry && hasAttempted;
+  
+  const hoverColor = isLocked ? 'hover:border-gray-300' : (isUTBK ? 'hover:border-blue-500' : 'hover:border-green-500');
 
   return (
     <motion.div
-      className={`group relative overflow-hidden rounded-2xl bg-white shadow-lg transition-all duration-300 ${hoverColor} border-2 border-transparent`}
+      className={`group relative overflow-hidden rounded-2xl bg-white shadow-lg transition-all duration-300 ${hoverColor} border-2 ${isLocked ? 'border-gray-200 bg-gray-50' : 'border-transparent'}`}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: index * 0.1 }}
     >
       <div className="p-6">
         <div className="flex items-center justify-between">
-          <BookOpen className="h-10 w-10 text-gray-300 transition-all group-hover:text-blue-500" />
-          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${tagColor}`}>
+          <BookOpen className={`h-10 w-10 transition-all ${isLocked ? 'text-gray-300' : 'text-gray-300 group-hover:text-blue-500'}`} />
+          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${isLocked ? 'bg-gray-200 text-gray-700' : tagColor}`}>
             {paket.tipe_ujian.toUpperCase()}
           </span>
         </div>
-        <h3 className="mt-4 text-xl font-bold text-gray-900">{paket.judul}</h3>
-        <p className="mt-1 text-sm text-gray-600">
+        <h3 className={`mt-4 text-xl font-bold ${isLocked ? 'text-gray-500' : 'text-gray-900'}`}>
+          {paket.judul}
+        </h3>
+        <p className={`mt-1 text-sm ${isLocked ? 'text-gray-500' : 'text-gray-600'}`}>
           {paket.deskripsi || 'Tidak ada deskripsi.'}
         </p>
-        <Link
-          to={`/konfirmasi/${paket.id}`}
-          className="mt-6 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-md transition-all duration-300 hover:bg-blue-700 hover:gap-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-        >
-          Mulai Kerjakan
-          <ArrowRight className="h-4 w-4" />
-        </Link>
+        
+        {/* --- TOMBOL DINAMIS (LANGKAH 5) --- */}
+        {isLocked ? (
+          <button
+            disabled
+            className="mt-6 inline-flex items-center gap-2 rounded-lg bg-gray-300 px-5 py-3 text-sm font-semibold text-gray-600 cursor-not-allowed"
+          >
+            Sudah Dikerjakan
+            <CheckSquare className="h-4 w-4" />
+          </button>
+        ) : (
+          <Link
+            to={`/konfirmasi/${paket.id}`}
+            className="mt-6 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-md transition-all duration-300 hover:bg-blue-700 hover:gap-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          >
+            Mulai Kerjakan
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        )}
+        {/* --- AKHIR TOMBOL DINAMIS --- */}
+
       </div>
     </motion.div>
   );
 };
 
-// --- Komponen Internal: Item Riwayat Terakhir ---
+// --- Komponen Internal: Item Riwayat Terakhir (Tetap Sama) ---
 const HistoryItem = ({ item }) => (
   <Link 
     to={`/pembahasan/${item.id}`} 
@@ -106,52 +127,44 @@ const HistoryItem = ({ item }) => (
 
 // --- Komponen Utama: Dashboard ---
 export default function Dashboard() {
+  // --- STATE BARU (LANGKAH 5) ---
   const [profile, setProfile] = useState(null);
+  const [stats, setStats] = useState({ totalTes: 0, skorTerbaik: 0, rataRata: 0 });
   const [paketSoal, setPaketSoal] = useState([]);
-  const [history, setHistory] = useState([]);
+  const [recentHistory, setRecentHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // 1. useEffect DIMODIFIKASI untuk mengambil SEMUA data
+  // --- useEffect DIMODIFIKASI (LANGKAH 5) ---
+  // Hanya memanggil 1 API 'getDashboardData'
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       setError(null);
 
       try {
-        // Ambil data user yang sedang login
-        const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
-        if (authError || !authUser) throw new Error("Sesi tidak ditemukan. Silakan login ulang.");
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError || !session) throw new Error("Akses ditolak. Silakan login ulang.");
 
-        // Ambil 3 data sekaligus secara paralel
-        const [profileRes, paketRes, historyRes] = await Promise.all([
-          // Data Profil (untuk nama)
-          supabase
-            .from('profiles')
-            .select('nama_lengkap')
-            .eq('id', authUser.id)
-            .single(),
-          // Data Paket Soal (untuk daftar tes)
-          supabase
-            .from('paket_soal')
-            .select('id, judul, deskripsi, tipe_ujian')
-            .order('created_at', { ascending: false }),
-          // Data Riwayat (untuk statistik & aktivitas terakhir)
-          supabase
-            .from('history_tes')
-            .select('id, skor_total, waktu_selesai, paket_soal(judul)') // Join dengan paket_soal
-            .eq('user_id', authUser.id)
-            .eq('status', 'selesai') // Hanya ambil yang sudah selesai
-            .order('waktu_selesai', { ascending: false })
-        ]);
+        // Panggil API 'pintar' yang baru kita buat
+        const res = await fetch('/api/user?action=getDashboardData', {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`
+          }
+        });
 
-        if (profileRes.error) throw new Error(`Profil: ${profileRes.error.message}`);
-        if (paketRes.error) throw new Error(`Paket Soal: ${paketRes.error.message}`);
-        if (historyRes.error) throw new Error(`Riwayat: ${historyRes.error.message}`);
+        if (!res.ok) {
+          const errData = await res.json();
+          throw new Error(errData.error || "Gagal memuat data dashboard.");
+        }
+
+        const data = await res.json();
         
-        setProfile(profileRes.data);
-        setPaketSoal(paketRes.data);
-        setHistory(historyRes.data);
+        // Set semua state dari satu panggilan
+        setProfile(data.profile);
+        setStats(data.stats);
+        setPaketSoal(data.paketSoal);
+        setRecentHistory(data.recentHistory);
 
       } catch (err) {
         console.error('Error fetching dashboard data:', err.message);
@@ -164,20 +177,8 @@ export default function Dashboard() {
     fetchData();
   }, []); // [] = jalankan sekali
 
-  // 2. Kalkulasi Statistik (dijalankan hanya jika 'history' berubah)
-  const stats = useMemo(() => {
-    const totalTes = history.length;
-    
-    if (totalTes === 0) {
-      return { totalTes: 0, skorTerbaik: 0, rataRata: 0 };
-    }
-    
-    const semuaSkor = history.map(h => h.skor_total);
-    const skorTerbaik = Math.max(...semuaSkor);
-    const rataRata = (semuaSkor.reduce((acc, skor) => acc + skor, 0) / totalTes).toFixed(1);
-    
-    return { totalTes, skorTerbaik, rataRata };
-  }, [history]);
+  // --- useMemo DIBUANG (LANGKAH 5) ---
+  // (Kalkulasi statistik sekarang dilakukan di backend)
 
   // --- Tampilan Render (MODERN) ---
   if (loading) {
@@ -196,7 +197,7 @@ export default function Dashboard() {
         Selamat Datang, {profile?.nama_lengkap || 'Peserta'}!
       </h1>
 
-      {/* 2. Kartu Statistik Cepat */}
+      {/* 2. Kartu Statistik Cepat (Data dari state 'stats') */}
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
         <StatCard 
           title="Total Tes Dikerjakan" 
@@ -236,18 +237,18 @@ export default function Dashboard() {
               ))}
             </div>
           ) : (
-            !error && <p className="text-gray-500">Belum ada paket ujian yang tersedia.</p>
+            !error && <p className="text-gray-500">Saat ini tidak ada paket ujian yang tersedia.</p>
           )}
         </div>
 
-        {/* Kolom Kanan (Sempit) - Aktivitas Terakhir */}
+        {/* Kolom Kanan (Sempit) - Aktivitas Terakhir (Data dari state 'recentHistory') */}
         <div className="space-y-6 lg:col-span-1">
           <h2 className="text-2xl font-semibold text-gray-900">
             Aktivitas Terakhir
           </h2>
-          {history.length > 0 ? (
+          {recentHistory.length > 0 ? (
             <div className="space-y-2 rounded-2xl bg-white p-4 shadow-lg">
-              {history.slice(0, 5).map(item => ( // Tampilkan 5 terakhir
+              {recentHistory.map(item => (
                 <HistoryItem key={item.id} item={item} />
               ))}
               <Link 
@@ -265,4 +266,4 @@ export default function Dashboard() {
       </div>
     </motion.div>
   );
-                                      }
+                                                           }
