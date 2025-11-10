@@ -1,27 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, NavLink, Link, Navigate } from 'react-router-dom';
+// --- PERBAIKAN 1 DI SINI ---
+import { Routes, Route, NavLink, Link, Navigate, useLocation } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
 import { motion } from 'framer-motion';
 
 // --- Impor Ikon ---
 import {
-  Package,        // Untuk Paket Soal
-  LayoutList,     // Untuk Soal
-  FilePlus,       // Untuk Tambah Soal
-  Edit3,          // Untuk Edit
-  Trash2          // Untuk Hapus
+  Package,
+  LayoutList,
+  FilePlus,
+  Edit3,
+  Trash2
 } from 'lucide-react';
 
 // --- Impor Halaman Admin ---
-// (File-file ini sudah ada)
 import AdminTambahSoal from './AdminTambahSoal.jsx';
 import AdminEditSoal from './AdminEditSoal.jsx';
-// (Ini file BARU yang kita buat di Langkah 3)
 import ManajemenPaket from './ManajemenPaket.jsx';
 
 
 // --- Komponen Internal: SoalList (TETAP SAMA) ---
-// (Logika ini tetap sama seperti di File 92, tidak perlu diubah)
 const SoalList = () => {
   const [soalList, setSoalList] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -33,16 +31,13 @@ const SoalList = () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Akses ditolak.");
-
-      const res = await fetch('/api/admin/soal', { // Memanggil API Hono (sudah benar)
+      const res = await fetch('/api/admin/soal', {
         headers: { 'Authorization': `Bearer ${session.access_token}` }
       });
-      
       if (!res.ok) {
          const errData = await res.json();
          throw new Error(errData.error || "Gagal mengambil daftar soal.");
       }
-
       const { data } = await res.json();
       setSoalList(data || []);
     } catch (err) {
@@ -60,21 +55,17 @@ const SoalList = () => {
     if (!window.confirm("Apakah Anda yakin ingin menghapus soal ini?")) {
       return;
     }
-    
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Akses ditolak.");
-
-      const res = await fetch(`/api/admin/soal?id=${soalId}`, { // Memanggil API Hono (sudah benar)
+      const res = await fetch(`/api/admin/soal?id=${soalId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${session.access_token}` }
       });
-
       if (!res.ok) {
         const errData = await res.json();
         throw new Error(errData.error || "Gagal menghapus soal.");
       }
-      
       alert("Soal berhasil dihapus!");
       fetchDaftarSoal(); 
     } catch (err) {
@@ -149,20 +140,22 @@ const SoalList = () => {
 
 // --- Komponen Utama AdminDashboard (LAYOUT BARU) ---
 export default function AdminDashboard() {
+  // --- PERBAIKAN 2 DI SINI ---
+  // Panggil hook 'useLocation'
+  const location = useLocation();
   
-  // Fungsi helper untuk styling NavLink (Link navigasi)
-  // Ini adalah style "premium" yang modern
+  // Fungsi helper untuk styling NavLink
   const navLinkClass = ({ isActive }) =>
     `flex items-center gap-3 rounded-lg px-4 py-3 transition-colors
      ${isActive
-       ? 'bg-blue-100 text-blue-700 font-semibold shadow-inner' // Style Aktif
-       : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' // Style Non-Aktif
+       ? 'bg-blue-100 text-blue-700 font-semibold shadow-inner' 
+       : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
      }`;
 
   return (
     <div className="flex flex-col gap-8 md:flex-row md:gap-10">
       
-      {/* --- Sidebar Navigasi Admin (DESAIN BARU) --- */}
+      {/* --- Sidebar Navigasi Admin --- */}
       <aside className="w-full flex-shrink-0 md:w-1/4 lg:w-1/5">
         <div className="sticky top-24 rounded-2xl bg-white p-4 shadow-lg">
           <h2 className="mb-4 text-xs font-semibold uppercase text-gray-400">
@@ -170,7 +163,6 @@ export default function AdminDashboard() {
           </h2>
           <nav className="flex flex-col space-y-2">
             
-            {/* --- LINK BARU (LANGKAH 3) --- */}
             <NavLink to="/admin/paket" className={navLinkClass}>
               <Package className="h-5 w-5" />
               Manajemen Paket
@@ -181,29 +173,22 @@ export default function AdminDashboard() {
               Manajemen Soal
             </NavLink>
             
-            {/* Anda bisa tambahkan link lain di sini */}
-            
           </nav>
         </div>
       </aside>
 
-      {/* --- Area Konten Utama (RUTE BARU) --- */}
+      {/* --- Area Konten Utama --- */}
       <main className="w-full">
-        {/* Kita gunakan motion.div untuk animasi fade-in sederhana */}
+        {/* 'location.pathname' sekarang sudah terdefinisi */}
         <motion.div
-          key={location.pathname} // Kunci ini penting agar animasi berjalan saat rute berubah
+          key={location.pathname} 
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
         >
           <Routes>
-            {/* Rute Default: Arahkan ke Manajemen Paket */}
             <Route index element={<Navigate to="paket" replace />} />
-            
-            {/* Rute BARU (LANGKAH 3) */}
             <Route path="paket" element={<ManajemenPaket />} />
-            
-            {/* Rute-rute lama untuk Soal */}
             <Route path="soal" element={<SoalList />} /> 
             <Route path="soal/tambah" element={<AdminTambahSoal />} />
             <Route path="soal/edit/:soalId" element={<AdminEditSoal />} />
