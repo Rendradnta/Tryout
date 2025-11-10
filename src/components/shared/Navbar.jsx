@@ -7,10 +7,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard,
   History,
-  BarChart3,
-  UserCog,
+  BarChart3, // (Ikon Peringkat)
+  UserCog,     // (Ikon Admin)
   LogOut,
-  LayoutGrid // 9-Grid Icon
+  LogIn,
+  UserPlus,
+  LayoutGrid // <-- Ikon 9-Grid (sesuai gambar Anda)
 } from 'lucide-react';
 
 // --- Komponen Link untuk Mobile ---
@@ -35,12 +37,13 @@ const MobileNavLink = ({ to, icon, text, onClick, isAdmin = false }) => {
 };
 
 export default function Navbar() {
+  // --- State & Hook (TETAP SAMA) ---
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
 
-  // --- Logika useEffect (TETAP SAMA) ---
+  // --- Logika useEffect untuk Cek Sesi (TETAP SAMA) ---
   useEffect(() => {
     setLoading(true);
     const fetchUserProfile = async (authUser) => {
@@ -83,21 +86,22 @@ export default function Navbar() {
     navigate('/login');
   };
   
-  // --- Tampilan JSX (MODERN & SESUAI DESAIN) ---
+  // --- Tampilan JSX (MODERN & SESUAI DESAIN GAMBAR) ---
   return (
     <header className="sticky top-0 z-50 w-full">
-      {/* Ini adalah CSS kustom untuk background gradien diagonal Anda.
-        Saya menggunakan Tailwind arbitrary values agar tidak perlu file CSS.
+      {/* Container Utama dengan Background Gradien Diagonal
+        Ini menggunakan Tailwind Arbitrary Values untuk meniru 100% gambar Anda.
       */}
       <div 
         className="w-full text-white p-4 shadow-lg
-                   bg-[hsl(210,100%,35%)] 
-                   bg-[linear-gradient(135deg,_hsl(210,100%,35%)_0%,_hsl(205,100%,45%)_50%,_hsl(200,100%,55%)_100%)]"
+                   bg-[hsl(207,88%,46%)] 
+                   bg-[linear-gradient(110deg,_hsl(207,88%,28%)_45%,_hsl(207,88%,46%)_45%,_hsl(207,88%,46%)_65%,_hsl(207,88%,65%)_65%)]
+                   overflow-hidden"
       >
         <nav className="mx-auto flex max-w-7xl items-center justify-between">
           
           {/* 1. Logo, Judul, dan Subjudul (Sisi Kiri) */}
-          <Link to="/" className="flex items-center gap-3">
+          <Link to="/" className="flex items-center gap-3 z-10">
             <img 
               src="/logo-rs.jpg" // Pastikan ada di folder 'public/logo-rs.jpg'
               alt="Logo RS" 
@@ -105,7 +109,7 @@ export default function Navbar() {
               onError={(e) => { e.currentTarget.style.display = 'none'; }}
             />
             <div>
-              <h1 className="text-lg font-bold text-white tracking-wide">
+              <h1 className="text-xl font-bold text-white" style={{ textShadow: '1px 1px 3px rgba(0,0,0,0.2)' }}>
                 Resa Tryout
               </h1>
               <p className="text-xs text-blue-100 font-light">
@@ -115,7 +119,7 @@ export default function Navbar() {
           </Link>
           
           {/* 2. Menu Desktop (Tengah & Kanan - Tersembunyi di Mobile) */}
-          <div className="hidden items-center gap-6 md:flex">
+          <div className="hidden items-center gap-6 md:flex z-10">
             {!loading && (
               user ? (
                 // --- Tampilan Jika Sudah Login (Desktop) ---
@@ -159,15 +163,20 @@ export default function Navbar() {
           </div>
 
           {/* 3. Tombol Menu Burger (Hanya Tampil di Mobile) */}
-          <div className="flex items-center md:hidden">
+          <div className="flex items-center md:hidden z-10">
             {!loading && (
               <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="rounded-md p-2 text-white transition-colors hover:bg-white/20"
+                className="rounded-md p-2 text-white transition-transform duration-300 ease-out hover:bg-white/20 active:scale-90"
                 aria-label="Toggle menu"
               >
-                {/* Ikon 9-grid (LayoutGrid) dari Lucide */}
-                <LayoutGrid className="h-6 w-6" />
+                {/* Ikon 9-grid (LayoutGrid) dari Lucide (SESUAI GAMBAR) */}
+                <motion.div
+                   animate={{ rotate: isMobileMenuOpen ? 90 : 0 }}
+                   transition={{ duration: 0.3 }}
+                >
+                  <LayoutGrid className="h-6 w-6" />
+                </motion.div>
               </button>
             )}
           </div>
@@ -230,4 +239,4 @@ export default function Navbar() {
       </AnimatePresence>
     </header>
   );
-      }
+  }
