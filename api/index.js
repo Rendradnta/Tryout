@@ -75,7 +75,6 @@ adminRoutes.delete('/soal', async (c) => { /* ... (Logika Hapus Soal) ... */
   if (error) return c.json({ error: `Gagal menghapus: ${error.message}` }, 500);
   return c.json({ message: 'Soal berhasil dihapus' });
 });
-// Rute Admin Paket Soal (dari Langkah 2)
 adminRoutes.get('/paket', async (c) => { /* ... (Logika Get Paket Admin) ... */ 
   const { data, error } = await supabaseAdmin.from('paket_soal').select('*').order('created_at', { ascending: false });
   if (error) return c.json({ error: error.message }, 500);
@@ -157,11 +156,9 @@ testRoutes.get('/getPembahasan', async (c) => { /* ... (Logika Get Pembahasan) .
   return c.json({ jawaban_user: historyData.jawaban_user, soal_lengkap: soalData });
 });
 
-
-// === Rute User (/api/user) (DIMODIFIKASI UNTUK LANGKAH 4) ===
+// === Rute User (/api/user) ===
 const userRoutes = new Hono();
 userRoutes.use('*', userAuth);
-
 userRoutes.get('/', async (c) => { 
   const user = c.get('user');
   const { action, paket_id } = c.req.query();
@@ -173,45 +170,19 @@ userRoutes.get('/', async (c) => {
     return c.json({ data });
   }
 
-  // Aksi 'getPeringkat' (Tetap Sama)
-  if (action === 'getPeringkat') {
-    if (!paket_id) return c.json({ error: 'paket_id wajib ada di query.' }, 400);
-    const { data, error } = await supabaseAdmin.rpc('get_peringkat', { paket_uuid: paket_id });
-    if (error) return c.json({ error: `Gagal mengambil peringkat: ${error.message}` }, 500);
-    const formattedData = data.map(item => ({ ...item, profiles: { nama_lengkap: item.nama_lengkap } }));
-    return c.json({ data: formattedData });
-  }
-  
-  // --- AKSI BARU (LANGKAH 4) ---
+  // Aksi 'getDashboardData' (Tetap Sama)
   if (action === 'getDashboardData') {
     try {
-      // 1. Ambil semua data dalam satu panggilan paralel
       const [profileRes, paketRes, historyRes] = await Promise.all([
-        // Ambil profil user
         supabaseAdmin.from('profiles').select('nama_lengkap').eq('id', user.id).single(),
-        // Ambil paket yang PUBLISH
-        supabaseAdmin
-          .from('paket_soal')
-          .select('id, judul, deskripsi, tipe_ujian, max_attempts')
-          .eq('is_published', true)
-          .order('created_at', { ascending: false }),
-        // Ambil SEMUA riwayat user yang selesai
-        supabaseAdmin
-          .from('history_tes')
-          .select('id, skor_total, waktu_selesai, paket_id, paket_soal(judul)')
-          .eq('user_id', user.id)
-          .eq('status', 'selesai')
-          .order('waktu_selesai', { ascending: false })
+        supabaseAdmin.from('paket_soal').select('id, judul, deskripsi, tipe_ujian, max_attempts').eq('is_published', true).order('created_at', { ascending: false }),
+        supabaseAdmin.from('history_tes').select('id, skor_total, waktu_selesai, paket_id, paket_soal(judul)').eq('user_id', user.id).eq('status', 'selesai').order('waktu_selesai', { ascending: false })
       ]);
-
       if (profileRes.error) throw profileRes.error;
       if (paketRes.error) throw paketRes.error;
       if (historyRes.error) throw historyRes.error;
-      
       const historyData = historyRes.data || [];
       const paketData = paketRes.data || [];
-      
-      // 2. Hitung statistik dari riwayat
       const totalTes = historyData.length;
       let skorTerbaik = 0;
       let rataRata = 0;
@@ -220,36 +191,44 @@ userRoutes.get('/', async (c) => {
         skorTerbaik = Math.max(...semuaSkor);
         rataRata = (semuaSkor.reduce((acc, skor) => acc + skor, 0) / totalTes).toFixed(1);
       }
-      
-      // 3. Hitung jumlah pengerjaan per paket (untuk '1x Coba')
       const attemptsCount = {};
       for (const h of historyData) {
         attemptsCount[h.paket_id] = (attemptsCount[h.paket_id] || 0) + 1;
       }
-      
-      // 4. Gabungkan hitungan ke paket soal
       const paketSoalWithAttempts = paketData.map(paket => ({
         ...paket,
         attempts_taken: attemptsCount[paket.id] || 0
       }));
-
-      // 5. Kirim semua data ke frontend
       return c.json({
         profile: profileRes.data,
-        stats: {
-          totalTes,
-          skorTerbaik,
-          rataRata
-        },
+        stats: { totalTes, skorTerbaik, rataRata },
         paketSoal: paketSoalWithAttempts,
-        recentHistory: historyData.slice(0, 5) // Ambil 5 terbaru
+        recentHistory: historyData.slice(0, 5) 
       });
-
     } catch (err) {
       return c.json({ error: `Gagal mengambil data dashboard: ${err.message}` }, 500);
     }
   }
-  // --- AKHIR LANGKAH 4 ---
+
+  // --- PERBAIKAN PANGGILAN PERINGKAT DI SINI ---
+  if (action === 'getPeringkat') {
+    if (!paket_id) return c.json({ error: 'paket_id wajib ada di query.' }, 400);
+    
+    // Panggil fungsi SQL 'get_peringkat' yang baru kita buat
+    const { data, error } = await supabaseAdmin
+      .rpc('get_peringkat', { paket_uuid: paket_id });
+
+    if (error) {
+        console.error('Error RPC get_peringkat:', error);
+        return c.json({ error: `Gagal mengambil peringkat: ${error.message}` }, 500);
+    }
+    
+    // TIDAK PERLU FORMATTING.
+    // Kirim data mentah hasil RPC, karena frontend (Langkah 3)
+    // akan kita buat 'pintar' untuk membacanya.
+    return c.json({ data: data });
+  }
+  // --- AKHIR PERBAIKAN ---
   
   return c.json({ error: 'Aksi tidak valid.' }, 400);
 });
