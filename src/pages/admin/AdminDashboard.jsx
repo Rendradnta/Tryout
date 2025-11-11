@@ -1,57 +1,67 @@
 import React, { useState, useEffect } from 'react';
-// --- PERBAIKAN 1 DI SINI ---
-import { Routes, Route, NavLink, Link, Navigate, useLocation } from 'react-router-dom';
+// --- PERBAIKAN 1: Impor hook yang diperlukan ---
+import { Routes, Route, NavLink, Link, Navigate, useLocation, useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
 import { motion } from 'framer-motion';
 
 // --- Impor Ikon ---
 import {
-  Package,
-  LayoutList,
-  FilePlus,
-  Edit3,
-  Trash2
+  Package,        // Untuk Paket Soal
+  LayoutList,     // Untuk Soal
+  FilePlus,       // Untuk Tambah Soal
+  Edit3,          // Untuk Edit
+  Trash2          // Untuk Hapus
 } from 'lucide-react';
-
-import LoadingSpinner from '../../components/shared/LoadingSpinner.jsx';
 
 // --- Impor Halaman Admin ---
 import AdminTambahSoal from './AdminTambahSoal.jsx';
 import AdminEditSoal from './AdminEditSoal.jsx';
 import ManajemenPaket from './ManajemenPaket.jsx';
+import LoadingSpinner from '../../components/shared/LoadingSpinner.jsx'; // Asumsi ini sudah ada
 
 
-// --- Komponen Internal: SoalList (TETAP SAMA) ---
+// --- Komponen Internal: SoalList (DIMODIFIKASI TOTAL) ---
 const SoalList = () => {
+  // --- PERBAIKAN 2: Baca 'paketId' dari URL ---
+  const { paketId } = useParams();
+  const navigate = useNavigate();
+  
   const [soalList, setSoalList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const fetchDaftarSoal = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("Akses ditolak.");
-      const res = await fetch('/api/admin/soal', {
-        headers: { 'Authorization': `Bearer ${session.access_token}` }
-      });
-      if (!res.ok) {
-         const errData = await res.json();
-         throw new Error(errData.error || "Gagal mengambil daftar soal.");
-      }
-      const { data } = await res.json();
-      setSoalList(data || []);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // --- PERBAIKAN 3: fetchDaftarSoal sekarang bergantung pada paketId ---
   useEffect(() => {
+    const fetchDaftarSoal = async () => {
+      if (!paketId) return; // Jangan lakukan apa-apa jika tidak ada ID
+
+      setLoading(true);
+      setError(null);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) throw new Error("Akses ditolak.");
+
+        // Gunakan 'paketId' untuk memfilter API call
+        const res = await fetch(`/api/admin/soal?paket_id=${paketId}`, {
+          headers: { 'Authorization': `Bearer ${session.access_token}` }
+        });
+        
+        if (!res.ok) {
+           const errData = await res.json();
+           throw new Error(errData.error || "Gagal mengambil daftar soal.");
+        }
+
+        const { data } = await res.json();
+        setSoalList(data || []);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchDaftarSoal();
-  }, []);
+  }, [paketId]); // Jalankan ulang jika paketId berubah
 
   const handleDelete = async (soalId) => {
     if (!window.confirm("Apakah Anda yakin ingin menghapus soal ini?")) {
@@ -69,25 +79,31 @@ const SoalList = () => {
         throw new Error(errData.error || "Gagal menghapus soal.");
       }
       alert("Soal berhasil dihapus!");
-      fetchDaftarSoal(); 
+      // Refresh list setelah hapus
+      setSoalList(currentList => currentList.filter(s => s.id !== soalId));
     } catch (err) {
       alert(`Error: ${err.message}`);
     }
   };
 
-  if (loading) return <p className="text-gray-600">Memuat daftar soal...</p>;
+  if (loading) return <LoadingSpinner text="Memuat daftar soal..." />;
   if (error) return <p className="text-red-500">Error: {error}</p>;
 
   return (
     <div className="bg-white shadow-xl rounded-2xl overflow-hidden">
-      <div className="p-5 flex justify-between items-center">
-        <h2 className="text-xl font-semibold text-gray-800">Manajemen Soal</h2>
+      <div className="p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-semibold text-gray-800">Manajemen Soal</h2>
+          <p className="text-xs text-gray-500 font-mono mt-1">Paket ID: {paketId}</p>
+        </div>
+        
+        {/* --- PERBAIKAN 4: Link Tambah Soal sekarang meneruskan paketId --- */}
         <Link 
-          to="/admin/soal/tambah"
-          className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-md transition-colors hover:bg-blue-700"
+          to={`/admin/soal/tambah?paketId=${paketId}`}
+          className="flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-md transition-colors hover:bg-blue-700"
         >
           <FilePlus className="h-4 w-4" />
-          Tambah Soal
+          Tambah Soal ke Paket Ini
         </Link>
       </div>
       <div className="overflow-x-auto">
@@ -104,7 +120,7 @@ const SoalList = () => {
             {soalList.length === 0 ? (
               <tr>
                 <td colSpan="4" className="text-center py-10 text-gray-500">
-                  Belum ada soal. Silakan tambah soal baru.
+                  Belum ada soal untuk paket ini.
                 </td>
               </tr>
             ) : (
@@ -142,11 +158,8 @@ const SoalList = () => {
 
 // --- Komponen Utama AdminDashboard (LAYOUT BARU) ---
 export default function AdminDashboard() {
-  // --- PERBAIKAN 2 DI SINI ---
-  // Panggil hook 'useLocation'
   const location = useLocation();
   
-  // Fungsi helper untuk styling NavLink
   const navLinkClass = ({ isActive }) =>
     `flex items-center gap-3 rounded-lg px-4 py-3 transition-colors
      ${isActive
@@ -170,10 +183,9 @@ export default function AdminDashboard() {
               Manajemen Paket
             </NavLink>
             
-            <NavLink to="/admin/soal" className={navLinkClass}>
-              <LayoutList className="h-5 w-5" />
-              Manajemen Soal
-            </NavLink>
+            {/* --- PERBAIKAN 5: Link Manajemen Soal Dihapus ---
+                (Karena alurnya sekarang dari Manajemen Paket)
+            */}
             
           </nav>
         </div>
@@ -181,7 +193,6 @@ export default function AdminDashboard() {
 
       {/* --- Area Konten Utama --- */}
       <main className="w-full">
-        {/* 'location.pathname' sekarang sudah terdefinisi */}
         <motion.div
           key={location.pathname} 
           initial={{ opacity: 0, y: 10 }}
@@ -191,7 +202,10 @@ export default function AdminDashboard() {
           <Routes>
             <Route index element={<Navigate to="paket" replace />} />
             <Route path="paket" element={<ManajemenPaket />} />
-            <Route path="soal" element={<SoalList />} /> 
+            
+            {/* --- PERBAIKAN 6: Rute Soal sekarang dinamis --- */}
+            <Route path="soal/:paketId" element={<SoalList />} /> 
+            
             <Route path="soal/tambah" element={<AdminTambahSoal />} />
             <Route path="soal/edit/:soalId" element={<AdminEditSoal />} />
           </Routes>
@@ -200,4 +214,4 @@ export default function AdminDashboard() {
       
     </div>
   );
-    }
+}
