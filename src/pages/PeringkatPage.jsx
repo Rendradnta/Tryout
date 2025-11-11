@@ -38,12 +38,13 @@ export default function PeringkatPage() {
   const [loadingPeringkat, setLoadingPeringkat] = useState(false);
   const [error, setError] = useState(null);
 
-  // 3. useEffect (pertama): Ambil daftar paket soal untuk dropdown (Tetap Sama)
+  // 3. useEffect (pertama): Ambil daftar paket soal untuk dropdown
   useEffect(() => {
     const fetchPaketList = async () => {
       setLoadingPaket(true);
       try {
-        const { data, error }_ = await supabase
+        // --- PERBAIKAN DI BARIS BERIKUTNYA (HAPUS '_') ---
+        const { data, error } = await supabase
           .from('paket_soal')
           .select('id, judul')
           .eq('is_published', true); // Hanya tampilkan paket yang sudah publish
@@ -72,7 +73,8 @@ export default function PeringkatPage() {
       setError(null);
       
       try {
-        const { data: { session }, error: sessionError }_ = await supabase.auth.getSession();
+        // --- PERBAIKAN DI BARIS BERIKUTNYA (HAPUS '_') ---
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         if (sessionError || !session) throw new Error("Akses ditolak.");
 
         // Panggil API backend 'getPeringkat'
@@ -100,30 +102,21 @@ export default function PeringkatPage() {
   }, [selectedPaketId]); // Jalankan ulang HANYA JIKA selectedPaketId berubah
 
   // --- 5. LOGIKA "PINTAR" (DINAMIS) ---
-  // Memoize untuk performa: hanya hitung ulang jika 'peringkat' berubah
   const { headerKeys, showStatusColumn } = useMemo(() => {
     if (peringkat.length === 0) {
       return { headerKeys: [], showStatusColumn: false };
     }
-    
-    // Ambil data dari user pertama sebagai "template"
     const firstRow = peringkat[0];
-    
-    // Cek apakah kolom 'status_lulus' ada (tidak null)
     const statusExists = firstRow.status_lulus !== null;
-    
-    // Ambil semua key dari 'rincian_skor' (misal: ["twk", "tiu", "tkp"])
     const keys = firstRow.rincian_skor ? Object.keys(firstRow.rincian_skor) : [];
-    
     return { headerKeys: keys, showStatusColumn: statusExists };
   }, [peringkat]);
-  // --- AKHIR LOGIKA "PINTAR" ---
-
+  
   // Fungsi untuk memberi ikon medali
   const getMedal = (index) => {
-    if (index === 0) return <span title="Peringkat 1">🥇</span>;
-    if (index === 1) return <span title="Peringkat 2">🥈</span>;
-    if (index === 2) return <span title="Peringkat 3">🥉</span>;
+    if (index === 0) return <span title="Peringkat 1"></span>;
+    if (index === 1) return <span title="Peringkat 2"></span>;
+    if (index === 2) return <span title="Peringkat 3"></span>;
     return index + 1;
   };
 
