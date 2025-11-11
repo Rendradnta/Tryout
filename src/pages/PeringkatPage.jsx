@@ -1,12 +1,31 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import LoadingSpinner from '../components/shared/LoadingSpinner.jsx'; // Impor loading Anda
 
-// Komponen Loading
-const LoadingSpinner = ({ text = 'Memuat...' }) => (
-  <div className="text-center py-10">
-    <p className="text-lg text-gray-600">{text}</p>
-  </div>
-);
+// Impor Ikon
+import { AlertTriangle, CheckCircle, Award } from 'lucide-react';
+
+// --- Komponen Status (Lulus/Tidak) ---
+const StatusBadge = ({ status }) => {
+  if (status === null || status === undefined) {
+    return <span className="text-gray-500">-</span>;
+  }
+  
+  const isLulus = status === true;
+  
+  return (
+    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium
+      ${isLulus 
+        ? 'bg-green-100 text-green-800' 
+        : 'bg-red-100 text-red-700'
+      }`}
+    >
+      <span className={`h-1.5 w-1.5 rounded-full ${isLulus ? 'bg-green-600' : 'bg-red-600'}`}></span>
+      {isLulus ? 'Lulus' : 'Tidak Lulus'}
+    </span>
+  );
+};
+
 
 export default function PeringkatPage() {
   // 1. State untuk data
@@ -19,15 +38,15 @@ export default function PeringkatPage() {
   const [loadingPeringkat, setLoadingPeringkat] = useState(false);
   const [error, setError] = useState(null);
 
-  // 3. useEffect (pertama): Ambil daftar paket soal untuk dropdown
+  // 3. useEffect (pertama): Ambil daftar paket soal untuk dropdown (Tetap Sama)
   useEffect(() => {
     const fetchPaketList = async () => {
       setLoadingPaket(true);
       try {
-        // Ambil paket soal (butuh RLS: 'SELECT' untuk 'authenticated')
-        const { data, error } = await supabase
+        const { data, error }_ = await supabase
           .from('paket_soal')
-          .select('id, judul');
+          .select('id, judul')
+          .eq('is_published', true); // Hanya tampilkan paket yang sudah publish
         
         if (error) throw error;
         setPaketList(data);
@@ -38,13 +57,13 @@ export default function PeringkatPage() {
       }
     };
     fetchPaketList();
-  }, []); // [] = jalankan sekali saat halaman dimuat
+  }, []); // [] = jalankan sekali
 
   // 4. useEffect (kedua): Ambil data peringkat SAAT 'selectedPaketId' berubah
   useEffect(() => {
-    // Jangan jalankan jika belum ada paket yang dipilih
     if (!selectedPaketId) {
-      setPeringkat([]); // Kosongkan peringkat jika user reset
+      setPeringkat([]);
+      setError(null);
       return;
     }
 
@@ -53,15 +72,12 @@ export default function PeringkatPage() {
       setError(null);
       
       try {
-        // Ambil session/token untuk otentikasi
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError || !session) throw new Error("Akses ditolak. Silakan login ulang.");
+        const { data: { session }, error: sessionError }_ = await supabase.auth.getSession();
+        if (sessionError || !session) throw new Error("Akses ditolak.");
 
-        // 5. Panggil API backend 'getPeringkat'
+        // Panggil API backend 'getPeringkat'
         const res = await fetch(`/api/user?action=getPeringkat&paket_id=${selectedPaketId}`, {
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`
-          }
+          headers: { 'Authorization': `Bearer ${session.access_token}` }
         });
 
         if (!res.ok) {
@@ -70,7 +86,7 @@ export default function PeringkatPage() {
         }
 
         const { data } = await res.json();
-        setPeringkat(data);
+        setPeringkat(data || []); // Pastikan 'data' tidak null
         
       } catch (err) {
         console.error('Error fetching peringkat:', err.message);
@@ -81,33 +97,53 @@ export default function PeringkatPage() {
     };
 
     fetchPeringkat();
-  }, [selectedPaketId]); // 6. Jalankan ulang HANYA JIKA selectedPaketId berubah
+  }, [selectedPaketId]); // Jalankan ulang HANYA JIKA selectedPaketId berubah
+
+  // --- 5. LOGIKA "PINTAR" (DINAMIS) ---
+  // Memoize untuk performa: hanya hitung ulang jika 'peringkat' berubah
+  const { headerKeys, showStatusColumn } = useMemo(() => {
+    if (peringkat.length === 0) {
+      return { headerKeys: [], showStatusColumn: false };
+    }
+    
+    // Ambil data dari user pertama sebagai "template"
+    const firstRow = peringkat[0];
+    
+    // Cek apakah kolom 'status_lulus' ada (tidak null)
+    const statusExists = firstRow.status_lulus !== null;
+    
+    // Ambil semua key dari 'rincian_skor' (misal: ["twk", "tiu", "tkp"])
+    const keys = firstRow.rincian_skor ? Object.keys(firstRow.rincian_skor) : [];
+    
+    return { headerKeys: keys, showStatusColumn: statusExists };
+  }, [peringkat]);
+  // --- AKHIR LOGIKA "PINTAR" ---
 
   // Fungsi untuk memberi ikon medali
   const getMedal = (index) => {
-    if (index === 0) return '🥇'; // Juara 1
-    if (index === 1) return '🥈'; // Juara 2
-    if (index === 2) return '🥉'; // Juara 3
-    return index + 1; // Peringkat 4 dst.
+    if (index === 0) return <span title="Peringkat 1">🥇</span>;
+    if (index === 1) return <span title="Peringkat 2">🥈</span>;
+    if (index === 2) return <span title="Peringkat 3">🥉</span>;
+    return index + 1;
   };
 
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold">Papan Peringkat</h1>
       
-      {/* 7. Dropdown Pilihan Paket */}
+      {/* Dropdown Pilihan Paket */}
       <div>
         <label htmlFor="paketSelect" className="block text-sm font-medium text-gray-700 mb-1">
           Pilih Paket Ujian:
         </label>
         {loadingPaket ? (
-          <p className="text-gray-500">Memuat paket...</p>
+          <div className="h-10 w-full max-w-md animate-pulse rounded-md bg-gray-200"></div>
         ) : (
           <select
             id="paketSelect"
             value={selectedPaketId}
             onChange={(e) => setSelectedPaketId(e.target.value)}
-            className="w-full max-w-md block py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            className="w-full max-w-md block py-2.5 px-3 border border-gray-300 bg-white rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
             <option value="">-- Pilih Peringkat --</option>
             {paketList.map(paket => (
@@ -121,68 +157,117 @@ export default function PeringkatPage() {
 
       {/* Tampilkan Error */}
       {error && (
-        <p className="text-center py-5 text-red-600">Terjadi kesalahan: {error}</p>
+        <div className="flex items-center gap-3 rounded-md bg-red-50 p-4 text-red-700">
+          <AlertTriangle className="h-5 w-5 flex-shrink-0" />
+          <p className="text-sm font-medium">Terjadi kesalahan: {error}</p>
+        </div>
       )}
 
-      {/* 8. Tabel Peringkat */}
-      <div className="shadow-md rounded-lg overflow-x-auto">
-        <table className="w-full text-sm text-left text-gray-500">
-          <thead className="text-xs text-gray-700 uppercase bg-gray-100">
-            <tr>
-              <th scope="col" className="py-3 px-6 w-24 text-center">
-                Peringkat
-              </th>
-              <th scope="col" className="py-3 px-6">
-                Nama Peserta
-              </th>
-              <th scope="col" className="py-3 px-6 text-center">
-                Skor Total
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {loadingPeringkat && (
+      {/* 6. TABEL BARU (PREMIUM & RESPONSIVE) */}
+      <div className="shadow-xl rounded-2xl overflow-hidden bg-white">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm text-left text-gray-500">
+            <thead className="text-xs text-gray-700 uppercase bg-gray-100">
               <tr>
-                <td colSpan="3">
-                  <LoadingSpinner text="Memuat peringkat..." />
-                </td>
+                <th scope="col" className="py-4 px-6 text-center">
+                  Peringkat
+                </th>
+                <th scope="col" className="py-4 px-6 min-w-[200px]">
+                  Nama Peserta
+                </th>
+                <th scope="col" className="py-4 px-6 min-w-[150px]">
+                  Tgl. Selesai
+                </th>
+                
+                {/* Kolom Dinamis: Status (Hanya muncul jika ada) */}
+                {showStatusColumn && (
+                  <th scope="col" className="py-4 px-6 text-center">
+                    Status
+                  </th>
+                )}
+                
+                {/* Kolom Dinamis: Rincian Skor */}
+                {headerKeys.map(key => (
+                  <th key={key} scope="col" className="py-4 px-6 text-center uppercase">
+                    {key}
+                  </th>
+                ))}
+                
+                <th scope="col" className="py-4 px-6 text-center text-blue-700 bg-blue-50 sticky right-0 shadow-sm">
+                  Total Nilai
+                </th>
               </tr>
-            )}
+            </thead>
             
-            {!loadingPeringkat && !error && peringkat.length > 0 && (
-              peringkat.map((item, index) => (
-                <tr key={item.user_id} className="bg-white border-b hover:bg-gray-50">
-                  <td className="py-4 px-6 font-bold text-lg text-center">
-                    {getMedal(index)}
-                  </td>
-                  <td className="py-4 px-6 font-medium text-gray-900">
-                    {/* Ambil nama dari data join 'profiles' */}
-                    {item.profiles?.nama_lengkap || 'Nama Disembunyikan'}
-                  </td>
-                  <td className="py-4 px-6 text-lg font-bold text-blue-600 text-center">
-                    {item.skor_total}
+            <tbody>
+              {loadingPeringkat && (
+                <tr>
+                  <td colSpan={6 + headerKeys.length} className="text-center">
+                    <LoadingSpinner text="Memuat peringkat..." />
                   </td>
                 </tr>
-              ))
-            )}
-            
-            {!loadingPeringkat && !error && peringkat.length === 0 && selectedPaketId && (
-              <tr>
-                <td colSpan="3" className="text-center py-10 text-gray-500">
-                  Belum ada data peringkat untuk paket ini.
-                </td>
-              </tr>
-            )}
-            
-            {!loadingPeringkat && !selectedPaketId && (
-              <tr>
-                <td colSpan="3" className="text-center py-10 text-gray-500">
-                  Silakan pilih paket ujian untuk melihat peringkat.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+              )}
+              
+              {!loadingPeringkat && !error && peringkat.length > 0 && (
+                peringkat.map((item, index) => (
+                  <tr key={item.user_id} className="bg-white border-b hover:bg-gray-50">
+                    {/* Peringkat */}
+                    <td className="py-4 px-6 font-bold text-lg text-center text-gray-900">
+                      {getMedal(index)}
+                    </td>
+                    {/* Nama Peserta */}
+                    <td className="py-4 px-6 font-medium text-gray-900 whitespace-nowrap">
+                      {item.nama_lengkap || 'Nama Disembunyikan'}
+                    </td>
+                    {/* Tgl. Selesai */}
+                    <td className="py-4 px-6 text-gray-600 whitespace-nowrap">
+                      {new Date(item.waktu_selesai).toLocaleString('id-ID', {
+                        day: 'numeric', month: 'short', year: 'numeric',
+                        hour: '2-digit', minute: '2-digit'
+                      })}
+                    </td>
+                    
+                    {/* Kolom Dinamis: Status */}
+                    {showStatusColumn && (
+                      <td className="py-4 px-6 text-center">
+                        <StatusBadge status={item.status_lulus} />
+                      </td>
+                    )}
+                    
+                    {/* Kolom Dinamis: Rincian Skor */}
+                    {headerKeys.map(key => (
+                      <td key={key} className="py-4 px-6 text-center text-gray-700 font-medium">
+                        {item.rincian_skor[key] || 0}
+                      </td>
+                    ))}
+                    
+                    {/* Total Nilai (Sticky) */}
+                    <td className="py-4 px-6 text-lg font-bold text-blue-700 text-center bg-blue-50 sticky right-0 shadow-sm">
+                      {item.skor_total}
+                    </td>
+                  </tr>
+                ))
+              )}
+              
+              {/* --- Tampilan Kosong --- */}
+              {!loadingPeringkat && !error && peringkat.length === 0 && selectedPaketId && (
+                <tr>
+                  <td colSpan={6 + headerKeys.length} className="text-center py-10 text-gray-500">
+                    <CheckCircle className="mx-auto h-12 w-12 text-gray-400" />
+                    <p className="mt-2 text-base">Belum ada data peringkat untuk paket ini.</p>
+                  </td>
+                </tr>
+              )}
+              {!loadingPeringkat && !selectedPaketId && (
+                <tr>
+                  <td colSpan={6 + headerKeys.length} className="text-center py-10 text-gray-500">
+                    <p className="text-base">Silakan pilih paket ujian untuk melihat peringkat.</p>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
