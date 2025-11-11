@@ -38,23 +38,21 @@ export default function KonfirmasiTest() {
   const [paketInfo, setPaketInfo] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [isReady, setIsReady] = useState(false); // State untuk checkbox
+  const [isReady, setIsReady] = useState(false); 
 
   const { paketId } = useParams(); 
   const navigate = useNavigate(); 
 
-  // --- useEffect (Dimodifikasi agar lebih efisien) ---
+  // --- useEffect (Tetap Sama) ---
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       setError(null);
       
       try {
-        // 1. Ambil User (wajib pertama)
         const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
         if (authError || !authUser) throw new Error("Sesi tidak ditemukan. Silakan login ulang.");
 
-        // 2. Ambil Profil dan Paket secara paralel (lebih cepat)
         const [profileRes, paketRes] = await Promise.all([
           supabase
             .from('profiles')
@@ -63,7 +61,7 @@ export default function KonfirmasiTest() {
             .single(),
           supabase
             .from('paket_soal')
-            .select('judul, tipe_ujian, waktu_total_menit, config_subtes') // Ambil info waktu juga
+            .select('judul, tipe_ujian, waktu_total_menit, config_subtes') 
             .eq('id', paketId)
             .single()
         ]);
@@ -85,14 +83,14 @@ export default function KonfirmasiTest() {
     fetchData();
   }, [paketId]); 
 
-  // Fungsi untuk memulai tes (Tetap Sama)
+  // --- handleStartTest (Tetap Sama) ---
   const handleStartTest = () => {
     if (isReady) {
       navigate(`/kerjakan/${paketId}`); 
     }
   };
 
-  // --- Tampilan Render (MODERN) ---
+  // --- Tampilan Render ---
 
   if (loading) {
     return <LoadingSpinner text="Mempersiapkan ujian..." />;
@@ -102,7 +100,6 @@ export default function KonfirmasiTest() {
     return <ErrorState error={error} />;
   }
 
-  // Menghitung detail waktu untuk ditampilkan
   let detailWaktu = '';
   if (paketInfo?.tipe_ujian === 'skd') {
     detailWaktu = `${paketInfo.waktu_total_menit} Menit`;
@@ -111,10 +108,8 @@ export default function KonfirmasiTest() {
   }
 
   return (
-    // Latar belakang abu-abu
     <div className="flex min-h-screen items-center justify-center bg-gray-100 px-4 py-12">
       
-      {/* Kartu "Mengambang" dengan animasi */}
       <motion.div 
         className="w-full max-w-2xl space-y-8 rounded-2xl bg-white p-8 sm:p-10 shadow-xl"
         initial={{ opacity: 0, y: 20 }}
@@ -125,7 +120,6 @@ export default function KonfirmasiTest() {
           Konfirmasi Data Peserta
         </h1>
         
-        {/* Info Peserta */}
         <div className="flex flex-col items-center space-y-4">
           <img
             src={user?.foto_url || `https://ui-avatars.com/api/?name=${user?.nama_lengkap || user?.email}&background=random&color=fff`}
@@ -138,13 +132,11 @@ export default function KonfirmasiTest() {
           </div>
         </div>
 
-        {/* Detail Ujian (Desain "Tiket") */}
         <div className="border-t border-b border-dashed border-gray-300 py-6">
           <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold text-gray-800">
             <FileSpreadsheet className="h-6 w-6 text-blue-600" />
             Detail Ujian
           </h2>
-          {/* Menggunakan <dl> untuk data yang lebih semantik dan rapi */}
           <dl className="space-y-3">
             <div className="flex justify-between">
               <dt className="text-sm text-gray-600">Nama Ujian</dt>
@@ -163,7 +155,6 @@ export default function KonfirmasiTest() {
           </dl>
         </div>
 
-        {/* Checkbox Konfirmasi (Interaktif) */}
         <label 
           htmlFor="konfirmasiData" 
           className="flex items-start space-x-3 p-4 rounded-lg bg-gray-50 border border-gray-200 cursor-pointer transition-colors hover:bg-gray-100"
@@ -183,7 +174,6 @@ export default function KonfirmasiTest() {
           </div>
         </label>
 
-        {/* Tombol Mulai (Premium & Interaktif) */}
         <button
           onClick={handleStartTest}
           disabled={!isReady}
@@ -200,7 +190,12 @@ export default function KonfirmasiTest() {
             <ArrowRight className="h-5 w-5" />
           </motion.div>
         </button>
-      </div>
+      
+      {/* --- INI PERBAIKANNYA --- */}
+      {/* LAMA: </div> */}
+      </motion.div>
+      {/* --- AKHIR PERBAIKAN --- */}
+
     </div>
   );
 }
