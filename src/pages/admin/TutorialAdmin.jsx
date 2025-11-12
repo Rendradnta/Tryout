@@ -16,6 +16,9 @@ const Section = ({ title, icon, children }) => {
         <Icon className="h-6 w-6 text-blue-600" />
         <h2 className="text-2xl font-bold text-gray-900">{title}</h2>
       </div>
+      {/* PERBAIKAN: Menambahkan 'prose-sm' dan 'max-w-none' 
+        agar tag <pre> dan <ul> di dalamnya bisa di-style 
+      */}
       <div className="prose prose-sm max-w-none text-gray-700">
         {children}
       </div>
@@ -157,11 +160,18 @@ export default function TutorialAdmin() {
         <p>Untuk menambahkan gambar, Anda harus meng-upload gambar ke *storage* (misal: Supabase Storage, Vercel Blob) dan salin URL-nya. Gunakan tag `<img>`:</p>
         <pre className="mt-2 w-full rounded-lg bg-gray-900 p-4 text-xs text-green-300">
           <code>
-            {`<p>Perhatikan gambar:</p>\n<img \n  src="httpsDEPAN_URL_PUBLIK_GAMBAR_ANDA.jpg" \n  alt="Deskripsi gambar" \n  style="width: 200px; margin: 10px 0;"\n>`}
+            {/* --- PERBAIKAN 1 DI SINI: ---
+              Tag <img> sekarang ditutup dengan benar menggunakan '/>'
+            */}
+            {`<p>Perhatikan gambar:</p>\n<img \n  src="httpsDEPAN_URL_PUBLIK_GAMBAR_ANDA.jpg" \n  alt="Deskripsi gambar" \n  style="width: 200px; margin: 10px 0;"\n/>`}
           </code>
         </pre>
         <p className="mt-4">
-          Anda juga bisa menggunakan `<b>` (tebal), `<i>` (miring), `<ul>` (poin), dan `MathJax` (untuk rumus).
+          {/* --- PERBAIKAN 2 DI SINI: ---
+            Tag <b>, <i>, <ul> diubah menjadi string literal
+            menggunakan backtick (`) agar tidak dibaca sebagai JSX.
+          */}
+          Anda juga bisa menggunakan {`<b>`} (tebal), {`<i>`} (miring), {`<ul>`} (poin), dan `MathJax` (untuk rumus).
         </p>
       </Section>
 
@@ -181,21 +191,11 @@ export default function TutorialAdmin() {
         </ul>
       </Section>
 
-      {/* CSS untuk <pre> block */}
-      <style>{`
-        .prose pre {
-          background-color: #111827; /* bg-gray-900 */
-          color: #D1D5DB; /* text-gray-300 */
-          padding: 1em;
-          border-radius: 0.5rem; /* rounded-lg */
-          overflow-x: auto;
-        }
-        .prose code {
-          color: #6EE7B7; /* text-green-300 */
-          font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-          font-size: 0.875rem; /* text-sm */
-        }
-      `}</style>
+      {/* --- PERBAIKAN 3 DI SINI: ---
+        Menghapus <div> penutup yang salah dan tag <style> 
+        yang menyebabkan error "Unexpected closing 'div' tag".
+        Kita akan mengandalkan Tailwind 'prose' untuk styling.
+      */}
     </div>
   );
 }
