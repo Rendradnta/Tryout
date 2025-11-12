@@ -4,53 +4,49 @@ import { Routes, Route, NavLink, Link, Navigate, useLocation, useParams, useNavi
 import { supabase } from '../../lib/supabaseClient';
 import { motion } from 'framer-motion';
 
-// --- Impor Ikon ---
+// --- PERBAIKAN 2: Impor Ikon BARU ---
 import {
   Package,        // Untuk Paket Soal
   LayoutList,     // Untuk Soal
   FilePlus,       // Untuk Tambah Soal
   Edit3,          // Untuk Edit
-  Trash2          // Untuk Hapus
+  Trash2,         // Untuk Hapus
+  Users,          // <-- IKON BARU
+  HelpCircle      // <-- IKON BARU
 } from 'lucide-react';
 
-// --- Impor Halaman Admin ---
+// --- PERBAIKAN 3: Impor Halaman BARU ---
 import AdminTambahSoal from './AdminTambahSoal.jsx';
 import AdminEditSoal from './AdminEditSoal.jsx';
 import ManajemenPaket from './ManajemenPaket.jsx';
-import LoadingSpinner from '../../components/shared/LoadingSpinner.jsx'; // Asumsi ini sudah ada
+import ManajemenUser from './ManajemenUser.jsx';   // <-- FILE BARU
+import TutorialAdmin from './TutorialAdmin.jsx'; // <-- FILE BARU
+import LoadingSpinner from '../../components/shared/LoadingSpinner.jsx';
 
 
-// --- Komponen Internal: SoalList (DIMODIFIKASI TOTAL) ---
+// --- Komponen Internal: SoalList (TETAP SAMA) ---
 const SoalList = () => {
-  // --- PERBAIKAN 2: Baca 'paketId' dari URL ---
   const { paketId } = useParams();
   const navigate = useNavigate();
-  
   const [soalList, setSoalList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // --- PERBAIKAN 3: fetchDaftarSoal sekarang bergantung pada paketId ---
   useEffect(() => {
     const fetchDaftarSoal = async () => {
-      if (!paketId) return; // Jangan lakukan apa-apa jika tidak ada ID
-
+      if (!paketId) return; 
       setLoading(true);
       setError(null);
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) throw new Error("Akses ditolak.");
-
-        // Gunakan 'paketId' untuk memfilter API call
         const res = await fetch(`/api/admin/soal?paket_id=${paketId}`, {
           headers: { 'Authorization': `Bearer ${session.access_token}` }
         });
-        
         if (!res.ok) {
            const errData = await res.json();
            throw new Error(errData.error || "Gagal mengambil daftar soal.");
         }
-
         const { data } = await res.json();
         setSoalList(data || []);
       } catch (err) {
@@ -59,9 +55,8 @@ const SoalList = () => {
         setLoading(false);
       }
     };
-
     fetchDaftarSoal();
-  }, [paketId]); // Jalankan ulang jika paketId berubah
+  }, [paketId]); 
 
   const handleDelete = async (soalId) => {
     if (!window.confirm("Apakah Anda yakin ingin menghapus soal ini?")) {
@@ -79,7 +74,6 @@ const SoalList = () => {
         throw new Error(errData.error || "Gagal menghapus soal.");
       }
       alert("Soal berhasil dihapus!");
-      // Refresh list setelah hapus
       setSoalList(currentList => currentList.filter(s => s.id !== soalId));
     } catch (err) {
       alert(`Error: ${err.message}`);
@@ -96,8 +90,6 @@ const SoalList = () => {
           <h2 className="text-xl font-semibold text-gray-800">Manajemen Soal</h2>
           <p className="text-xs text-gray-500 font-mono mt-1">Paket ID: {paketId}</p>
         </div>
-        
-        {/* --- PERBAIKAN 4: Link Tambah Soal sekarang meneruskan paketId --- */}
         <Link 
           to={`/admin/soal/tambah?paketId=${paketId}`}
           className="flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-md transition-colors hover:bg-blue-700"
@@ -111,7 +103,7 @@ const SoalList = () => {
           <thead className="text-xs text-gray-700 uppercase bg-gray-50">
             <tr>
               <th scope="col" className="py-3 px-6">No.</th>
-              <th scope="col" className="py-3 px-6">Cuplikan Teks Soal</th>
+              <th scope="col" classNameT="py-3 px-6">Cuplikan Teks Soal</th>
               <th scope="col" className="py-3 px-6">Tipe</th>
               <th scope="col" className="py-3 px-6">Aksi</th>
             </tr>
@@ -170,11 +162,11 @@ export default function AdminDashboard() {
   return (
     <div className="flex flex-col gap-8 md:flex-row md:gap-10">
       
-      {/* --- Sidebar Navigasi Admin --- */}
-      <aside className="w-full flex-shrink-0 md:w-1/4 lg:w-1/5">
+      {/* --- Sidebar Navigasi Admin (DENGAN LINK BARU) --- */}
+      <aside className="w-full flex-shrink-0 md:w-1D/4 lg:w-1/5">
         <div className="sticky top-24 rounded-2xl bg-white p-4 shadow-lg">
           <h2 className="mb-4 text-xs font-semibold uppercase text-gray-400">
-            Menu Admin
+            Menu Utama
           </h2>
           <nav className="flex flex-col space-y-2">
             
@@ -183,15 +175,29 @@ export default function AdminDashboard() {
               Manajemen Paket
             </NavLink>
             
-            {/* --- PERBAIKAN 5: Link Manajemen Soal Dihapus ---
-                (Karena alurnya sekarang dari Manajemen Paket)
-            */}
-            
+            {/* --- PERBAIKAN 4: LINK BARU DITAMBAHKAN --- */}
+            <NavLink to="/admin/users" className={navLinkClass}>
+              <Users className="h-5 w-5" />
+              Manajemen User
+            </NavLink>
           </nav>
+          
+          {/* --- Menu Bantuan --- */}
+          <hr className="my-4 border-gray-200" />
+          <h2 className="mb-4 text-xs font-semibold uppercase text-gray-400">
+            Bantuan
+          </h2>
+          <nav className="flex flex-col space-y-2">
+            <NavLink to="/admin/tutorial" className={navLinkClass}>
+              <HelpCircle className="h-5 w-5" />
+              Panduan Admin
+            </NavLink>
+          </nav>
+
         </div>
       </aside>
 
-      {/* --- Area Konten Utama --- */}
+      {/* --- Area Konten Utama (DENGAN RUTE BARU) --- */}
       <main className="w-full">
         <motion.div
           key={location.pathname} 
@@ -203,9 +209,12 @@ export default function AdminDashboard() {
             <Route index element={<Navigate to="paket" replace />} />
             <Route path="paket" element={<ManajemenPaket />} />
             
-            {/* --- PERBAIKAN 6: Rute Soal sekarang dinamis --- */}
-            <Route path="soal/:paketId" element={<SoalList />} /> 
+            {/* --- PERBAIKAN 5: RUTE BARU DITAMBAHKAN --- */}
+            <Route path="users" element={<ManajemenUser />} />
+            <Route path="tutorial" element={<TutorialAdmin />} />
             
+            {/* Rute-rute lama untuk Soal */}
+            <Route path="soal/:paketId" element={<SoalList />} /> 
             <Route path="soal/tambah" element={<AdminTambahSoal />} />
             <Route path="soal/edit/:soalId" element={<AdminEditSoal />} />
           </Routes>
