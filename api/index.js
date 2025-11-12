@@ -38,11 +38,9 @@ const adminAuth = async (c, next) => {
 };
 const secureAdmin = [userAuth, adminAuth];
 
-// --- Rute Admin ---
+// --- (Rute Admin Anda tetap sama persis) ---
 const adminRoutes = new Hono();
 adminRoutes.use('*', ...secureAdmin); 
-
-// (Rute /soal dan /paket Anda tetap sama)
 adminRoutes.get('/soal', async (c) => { /* ... (Logika Get Soal List/Detail) ... */ 
   const { id, paket_id } = c.req.query();
   if (id) {
@@ -105,20 +103,11 @@ adminRoutes.delete('/paket', async (c) => { /* ... (Logika Hapus Paket) ... */
   if (error) return c.json({ error: `Gagal menghapus paket: ${error.message}` }, 500);
   return c.json({ message: 'Paket (dan semua soal di dalamnya) berhasil dihapus' });
 });
-
-// --- PERBAIKAN DI RUTE INI ---
-adminRoutes.get('/users', async (c) => {
-  // Mengambil SEMUA user untuk ditampilkan di dashboard admin
-  const { data, error } = await supabaseAdmin
-    .from('profiles')
-    .select('id, nama_lengkap, email, role, premium_expires_at');
-    // --- BARIS .order() DIHAPUS ---
-  
+adminRoutes.get('/users', async (c) => { /* ... (Logika Get Users) ... */ 
+  const { data, error } = await supabaseAdmin.from('profiles').select('id, nama_lengkap, email, role, premium_expires_at');
   if (error) return c.json({ error: error.message }, 500);
   return c.json({ data });
 });
-// --- AKHIR PERBAIKAN ---
-
 adminRoutes.put('/users', async (c) => { /* ... (Logika Update User) ... */ 
   const { id } = c.req.query();
   const body = await c.req.json();
@@ -135,7 +124,6 @@ adminRoutes.delete('/users', async (c) => { /* ... (Logika Hapus User) ... */
   if (error) return c.json({ error: `Gagal menghapus user: ${error.message}` }, 500);
   return c.json({ message: 'User (dan semua datanya) berhasil dihapus' });
 });
-
 
 // === Rute Auth (/api/auth/...) (Tetap Sama) ===
 const authRoutes = new Hono();
@@ -156,9 +144,16 @@ authRoutes.post('/signup', async (c) => { /* ... (Logika Signup) ... */
   let message = data.session ? 'Pendaftaran berhasil.' : 'Pendaftaran berhasil. Cek email Anda.';
   return c.json({ message, user: data.user, session: data.session }, 201);
 });
+
+// --- PERBAIKAN 1 DI SINI ---
 authRoutes.get('/user', userAuth, async (c) => { 
   const user = c.get('user');
-  const { data: profile, error }_ = await supabaseAdmin.from('profiles').select('nama_lengkap').eq('id', user.id).single();
+  // Hapus '_' yang menyebabkan syntax error
+  const { data: profile, error } = await supabaseAdmin
+    .from('profiles')
+    .select('nama_lengkap')
+    .eq('id', user.id)
+    .single();
   if (error) return c.json({ error: `Gagal mengambil profil: ${error.message}` }, 500);
   return c.json({ user: { ...user, ...profile } });
 });
@@ -198,12 +193,15 @@ testRoutes.get('/getPembahasan', async (c) => { /* ... (Logika Get Pembahasan) .
 });
 
 
-// === Rute User (/api/user) (Tetap Sama) ===
+// === Rute User (/api/user) ===
 const userRoutes = new Hono();
 userRoutes.use('*', userAuth); 
 userRoutes.get('/', async (c) => { 
   const user = c.get('user');
-  const { action, paket_id }_ = c.req.query();
+  // --- PERBAIKAN 2 DI SINI ---
+  // Hapus '_' yang menyebabkan syntax error
+  const { action, paket_id } = c.req.query();
+
   if (action === 'getHistory') {
     const { data, error } = await supabaseAdmin.from('history_tes').select('id, waktu_selesai, skor_total, status, paket_soal ( id, judul, tipe_ujian )').eq('user_id', user.id).order('waktu_selesai', { ascending: false });
     if (error) return c.json({ error: `Gagal mengambil riwayat: ${error.message}` }, 500);
@@ -211,7 +209,9 @@ userRoutes.get('/', async (c) => {
   }
   if (action === 'getDashboardData') {
     try {
-      const [paketRes, historyRes]_ = await Promise.all([
+      // --- PERBAIKAN 3 DI SINI ---
+      // Hapus '_' yang menyebabkan syntax error
+      const [paketRes, historyRes] = await Promise.all([
         supabaseAdmin.from('paket_soal').select('id, judul, deskripsi, tipe_ujian, max_attempts, is_premium').eq('is_published', true).order('created_at', { ascending: false }),
         supabaseAdmin.from('history_tes').select('id, skor_total, waktu_selesai, paket_id, paket_soal(judul)').eq('user_id', user.id).eq('status', 'selesai').order('waktu_selesai', { ascending: false })
       ]);
