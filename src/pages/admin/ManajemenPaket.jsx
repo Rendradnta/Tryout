@@ -3,44 +3,36 @@ import { supabase } from '../../lib/supabaseClient';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// Impor Ikon
+// --- Impor Ikon ---
 import {
-  Plus,
-  Trash2,
-  Eye,
-  EyeOff,
-  AlertTriangle,
-  CheckCircle2,
-  RefreshCw, // Ikon loading
-  Settings,
-  X,
-  Repeat,
-  Repeat1
+  Plus, Trash2, Eye, EyeOff, AlertTriangle, CheckCircle2, RefreshCw, 
+  Settings, X, Repeat, Repeat1, Copy, Check,
+  Gem // <-- IKON BARU
 } from 'lucide-react';
 
+// --- Impor Komponen Loading ---
 import LoadingSpinner from '../../components/shared/LoadingSpinner.jsx';
 
-// --- Komponen 1: Form Pembuatan Paket (Bisa diciutkan) ---
+// --- Komponen 1: Form Pembuatan Paket ---
 const PaketCreateForm = ({ onPaketCreated }) => {
+  // ... (Logika state & handleSubmit di sini tetap sama persis seperti File 111) ...
+  // ... (Tambahkan is_premium ke state form) ...
   const [judul, setJudul] = useState('');
   const [tipeUjian, setTipeUjian] = useState('skd');
   const [deskripsi, setDeskripsi] = useState('');
-  
-  // State untuk Advanced fields
   const [waktuMenit, setWaktuMenit] = useState('');
   const [configSubtes, setConfigSubtes] = useState('');
   const [passingGrade, setPassingGrade] = useState('');
+  const [isPremium, setIsPremium] = useState(false); // <-- STATE BARU
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [isOpen, setIsOpen] = useState(false); // Untuk menciutkan form
+  const [isOpen, setIsOpen] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
-
-    // Validasi JSON
     let parsedConfig = null;
     let parsedPG = null;
     try {
@@ -51,11 +43,9 @@ const PaketCreateForm = ({ onPaketCreated }) => {
       setLoading(false);
       return;
     }
-    
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Akses ditolak.");
-
       const { data, error } = await fetch('/api/admin/paket', {
         method: 'POST',
         headers: {
@@ -68,25 +58,18 @@ const PaketCreateForm = ({ onPaketCreated }) => {
           deskripsi,
           waktu_total_menit: waktuMenit ? parseInt(waktuMenit, 10) : null,
           config_subtes: parsedConfig,
-          passing_grade: parsedPG
-          // is_published dan max_attempts akan di-set default (false/null) oleh API
+          passing_grade: parsedPG,
+          is_premium: isPremium // <-- KIRIM DATA BARU
         })
       }).then(res => res.json());
-
       if (error) throw new Error(error.message || "Gagal membuat paket.");
-
       setLoading(false);
-      setIsOpen(false); // Tutup form
-      onPaketCreated(); // Beri tahu parent untuk refresh
-      
+      setIsOpen(false);
+      onPaketCreated();
       // Reset form
-      setJudul('');
-      setTipeUjian('skd');
-      setDeskripsi('');
-      setWaktuMenit('');
-      setConfigSubtes('');
-      setPassingGrade('');
-
+      setJudul(''); setTipeUjian('skd'); setDeskripsi('');
+      setWaktuMenit(''); setConfigSubtes(''); setPassingGrade('');
+      setIsPremium(false); // <-- RESET STATE BARU
     } catch (err) {
       setError(err.message);
       setLoading(false);
@@ -106,7 +89,6 @@ const PaketCreateForm = ({ onPaketCreated }) => {
           <Plus className="h-6 w-6 text-blue-600" />
         </motion.div>
       </button>
-
       <AnimatePresence>
         {isOpen && (
           <motion.form
@@ -117,7 +99,6 @@ const PaketCreateForm = ({ onPaketCreated }) => {
             className="space-y-6 border-t border-gray-200 p-6"
           >
             {error && <p className="rounded-md bg-red-100 p-3 text-sm text-red-700">{error}</p>}
-            
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               <div>
                 <label className="block text-sm font-medium text-gray-700">Judul Paket (Wajib)</label>
@@ -135,10 +116,29 @@ const PaketCreateForm = ({ onPaketCreated }) => {
               <label className="block text-sm font-medium text-gray-700">Deskripsi Singkat</label>
               <input type="text" value={deskripsi} onChange={(e) => setDeskripsi(e.target.value)} className="mt-1 input-field" />
             </div>
-            
+
+            {/* --- CHECKBOX PREMIUM BARU --- */}
+            <div className="flex items-start">
+              <div className="flex h-6 items-center">
+                <input
+                  id="is_premium"
+                  type="checkbox"
+                  checked={isPremium}
+                  onChange={(e) => setIsPremium(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-600"
+                />
+              </div>
+              <div className="ml-3 text-sm">
+                <label htmlFor="is_premium" className="font-medium text-gray-900">
+                  Paket Premium
+                </label>
+                <p className="text-gray-500">Centang jika ini adalah paket soal berbayar.</p>
+              </div>
+            </div>
+            {/* --- AKHIR CHECKBOX --- */}
+
             <hr />
             <h3 className="text-md font-semibold text-gray-600">Pengaturan Lanjutan (Spesifik Tipe)</h3>
-            
             <div>
               <label className="block text-sm font-medium text-gray-700">Waktu Total Menit (Hanya untuk SKD)</label>
               <input type="number" value={waktuMenit} onChange={(e) => setWaktuMenit(e.target.value)} className="mt-1 input-field" placeholder="Contoh: 100" />
@@ -151,7 +151,6 @@ const PaketCreateForm = ({ onPaketCreated }) => {
               <label className="block text-sm font-medium text-gray-700">Config Subtes (Hanya untuk UTBK - Format JSON)</label>
               <textarea value={configSubtes} onChange={(e) => setConfigSubtes(e.target.value)} rows="5" className="mt-1 input-field font-mono text-sm" placeholder='Contoh: [{"nama": "Penalaran Umum", "waktu": 30, "jumlah_soal": 20}, ...]'></textarea>
             </div>
-            
             <button
               type="submit"
               disabled={loading}
@@ -167,30 +166,25 @@ const PaketCreateForm = ({ onPaketCreated }) => {
 };
 
 
-// --- Komponen 2: Kartu Interaktif untuk Paket yang Sudah Ada ---
+// --- Komponen 2: Kartu Paket (DENGAN PERBAIKAN) ---
 const PaketCardAdmin = ({ paket, onPaketUpdated, onPaketDeleted }) => {
-  const [isToggling, setIsToggling] = useState(false); // Loading untuk toggle
-  const [isDeleting, setIsDeleting] = useState(false); // Loading untuk hapus
+  const [isToggling, setIsToggling] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
 
-  // Fungsi untuk update (dipakai oleh toggle & attempts)
   const updatePaket = async (updatedData) => {
     setIsToggling(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Akses ditolak.");
-
       const res = await fetch(`/api/admin/paket?id=${paket.id}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
         body: JSON.stringify(updatedData)
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error.message);
-      
-      onPaketUpdated(data.data); // Update state di parent
+      onPaketUpdated(data.data);
     } catch (err) {
       alert(`Error: ${err.message}`);
     } finally {
@@ -198,42 +192,40 @@ const PaketCardAdmin = ({ paket, onPaketUpdated, onPaketDeleted }) => {
     }
   };
 
-  // Handler untuk Toggle Publish (Fitur Hide)
-  const handlePublishToggle = () => {
-    updatePaket({ is_published: !paket.is_published });
-  };
+  const handlePublishToggle = () => updatePaket({ is_published: !paket.is_published });
+  const handleMaxAttemptsChange = (e) => updatePaket({ max_attempts: e.target.value === '1' ? 1 : null });
+  // --- HANDLER BARU ---
+  const handlePremiumToggle = () => updatePaket({ is_premium: !paket.is_premium });
   
-  // Handler untuk Batas Pengerjaan (Fitur 1x Coba)
-  const handleMaxAttemptsChange = (e) => {
-    const newValue = e.target.value === '1' ? 1 : null;
-    updatePaket({ max_attempts: newValue });
-  };
-  
-  // Handler untuk Hapus
   const handleDelete = async () => {
     if (window.confirm(`Yakin ingin menghapus paket "${paket.judul}"? SEMUA soal dan riwayat tes di dalamnya akan HILANG PERMANEN.`)) {
       setIsDeleting(true);
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) throw new Error("Akses ditolak.");
-
         const res = await fetch(`/api/admin/paket?id=${paket.id}`, {
           method: 'DELETE',
           headers: { 'Authorization': `Bearer ${session.access_token}` }
         });
         const data = await res.json();
         if (data.error) throw new Error(data.error.message);
-
         alert('Paket berhasil dihapus.');
-        onPaketDeleted(paket.id); // Hapus dari state di parent
+        onPaketDeleted(paket.id);
       } catch (err) {
         alert(`Error: ${err.message}`);
         setIsDeleting(false);
       }
     }
   };
+  
+  const handleCopyId = () => {
+    navigator.clipboard.writeText(paket.id);
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000);
+  };
 
   const isPublished = paket.is_published;
+  const isPremium = paket.is_premium; // <-- AMBIL STATUS PREMIUM
 
   return (
     <motion.div
@@ -241,18 +233,32 @@ const PaketCardAdmin = ({ paket, onPaketUpdated, onPaketDeleted }) => {
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.9 }}
-      className={`relative overflow-hidden rounded-2xl bg-white shadow-lg border-l-8 ${isPublished ? 'border-green-500' : 'border-gray-400'}`}
+      className={`relative overflow-hidden rounded-2xl bg-white shadow-lg border-l-8 
+        ${isPublished ? (isPremium ? 'border-yellow-500' : 'border-green-500') : 'border-gray-400'}
+      `}
     >
       <div className="p-5">
         <span 
           className={`absolute top-4 right-4 rounded-full px-3 py-1 text-xs font-semibold
-            ${isPublished ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-700'}`}
+            ${isPublished ? (isPremium ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800') : 'bg-gray-100 text-gray-700'}
+          `}
         >
-          {isPublished ? 'Published' : 'Draft'}
+          {isPublished ? (isPremium ? '💎 Premium' : 'Published') : 'Draft'}
         </span>
         
         <h3 className="text-lg font-bold text-gray-900 pr-20">{paket.judul}</h3>
         <p className="text-sm text-gray-500 mb-4">{paket.tipe_ujian.toUpperCase()}</p>
+        
+        {/* Tombol Salin ID (Tetap Sama) */}
+        <div className="mb-4">
+          <label className="block text-xs font-medium text-gray-500">PAKET ID</label>
+          <div className="flex items-center gap-2">
+            <input type="text" readOnly value={paket.id} className="w-full truncate rounded-md border-gray-300 bg-gray-100 p-2 font-mono text-xs text-gray-600" />
+            <button onClick={handleCopyId} className={`flex-shrink-0 rounded-md p-2 transition-colors ${isCopied ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`} title="Salin ID Paket">
+              {isCopied ? <Check className="h-5 w-5" /> : <Copy className="h-5 w-5" />}
+            </button>
+          </div>
+        </div>
         
         <hr className="my-4" />
         
@@ -263,20 +269,34 @@ const PaketCardAdmin = ({ paket, onPaketUpdated, onPaketDeleted }) => {
           <div className="flex items-center justify-between">
             <label htmlFor={`publish-${paket.id}`} className="text-sm font-medium text-gray-700">
               {isPublished ? <Eye className="inline h-4 w-4 mr-1" /> : <EyeOff className="inline h-4 w-4 mr-1" />}
-              Sembunyikan/Tampilkan
+              Tampilkan ke User
             </label>
             <button
               id={`publish-${paket.id}`}
               onClick={handlePublishToggle}
               disabled={isToggling}
-              className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
-                ${isPublished ? 'bg-green-600' : 'bg-gray-300'}
-                ${isToggling ? 'opacity-50' : ''}`}
+              className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${isPublished ? 'bg-green-600' : 'bg-gray-300'} ${isToggling ? 'opacity-50' : ''}`}
             >
-              <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out
-                ${isPublished ? 'translate-x-5' : 'translate-x-0'}`} />
+              <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${isPublished ? 'translate-x-5' : 'translate-x-0'}`} />
             </button>
           </div>
+
+          {/* --- PERBAIKAN: TOGGLE PREMIUM --- */}
+          <div className="flex items-center justify-between">
+            <label htmlFor={`premium-${paket.id}`} className="text-sm font-medium text-gray-700">
+              <Gem className={`inline h-4 w-4 mr-1 ${isPremium ? 'text-yellow-600' : ''}`} />
+              Paket Premium
+            </label>
+            <button
+              id={`premium-${paket.id}`}
+              onClick={handlePremiumToggle}
+              disabled={isToggling}
+              className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 ${isPremium ? 'bg-yellow-500' : 'bg-gray-300'} ${isToggling ? 'opacity-50' : ''}`}
+            >
+              <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${isPremium ? 'translate-x-5' : 'translate-x-0'}`} />
+            </button>
+          </div>
+          {/* --- AKHIR PERBAIKAN --- */}
           
           {/* 2. Toggle 1x Coba */}
           <div className="flex items-center justify-between">
@@ -301,7 +321,7 @@ const PaketCardAdmin = ({ paket, onPaketUpdated, onPaketDeleted }) => {
         {/* 3. Tombol Aksi */}
         <div className="flex items-center justify-between">
           <Link
-            to={`/admin/soal/${paket.id}`} // Kita akan buat rute ini di Langkah 3
+            to={`/admin/soal/${paket.id}`} 
             className="rounded-md bg-blue-100 px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-200"
           >
             Edit Soal ({paket.soal_count || 0})
@@ -321,27 +341,24 @@ const PaketCardAdmin = ({ paket, onPaketUpdated, onPaketDeleted }) => {
 };
 
 
-// --- Komponen 3: Halaman Utama (ManajemenPaket) ---
+// --- Komponen 3: Halaman Utama (ManajemenPaket) (TETAP SAMA) ---
 export default function ManajemenPaket() {
   const [paketList, setPaketList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Fungsi untuk memuat semua paket
+  // ... (Semua logika fetchPaket, useEffect, dan callback tetap sama persis) ...
   const fetchPaket = async () => {
     setLoading(true);
     setError(null);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Akses ditolak.");
-      
       const res = await fetch('/api/admin/paket', {
         headers: { 'Authorization': `Bearer ${session.access_token}` }
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error.message);
-      
-      // TODO (Opsional): Kita bisa tambahkan hitungan soal
       setPaketList(data.data || []);
     } catch (err) {
       setError(err.message);
@@ -349,25 +366,13 @@ export default function ManajemenPaket() {
       setLoading(false);
     }
   };
-
-  // Muat data saat halaman dibuka
-  useEffect(() => {
-    fetchPaket();
-  }, []);
-
-  // Callback untuk child: Menambahkan paket baru ke list
-  const handlePaketCreated = () => {
-    fetchPaket(); // Cara termudah adalah refresh semua
-  };
-
-  // Callback untuk child: Mengupdate 1 paket di list
+  useEffect(() => { fetchPaket(); }, []);
+  const handlePaketCreated = () => fetchPaket();
   const handlePaketUpdated = (updatedPaket) => {
     setPaketList(currentList =>
       currentList.map(p => (p.id === updatedPaket.id ? updatedPaket : p))
     );
   };
-  
-  // Callback untuk child: Menghapus 1 paket dari list
   const handlePaketDeleted = (deletedPaketId) => {
     setPaketList(currentList =>
       currentList.filter(p => p.id !== deletedPaketId)
@@ -376,17 +381,12 @@ export default function ManajemenPaket() {
 
   return (
     <div className="space-y-8">
-      {/* 1. Form Pembuatan (Bisa diciutkan) */}
+      {/* ... (JSX untuk Form, Loading, Error, dan List tetap sama) ... */}
       <PaketCreateForm onPaketCreated={handlePaketCreated} />
-
-      {/* 2. Judul Daftar */}
       <h2 className="text-2xl font-semibold text-gray-900">
         Daftar Paket Soal yang Ada
       </h2>
-
-      {/* 3. Tampilan Loading / Error / List */}
       {loading && <LoadingSpinner text="Memuat daftar paket..." />}
-      
       {error && (
         <div className="rounded-md bg-red-100 p-4 text-center text-red-700">
           <AlertTriangle className="mx-auto h-12 w-12" />
@@ -394,7 +394,6 @@ export default function ManajemenPaket() {
           <p className="text-sm">{error}</p>
         </div>
       )}
-
       {!loading && !error && (
         <AnimatePresence>
           {paketList.length > 0 ? (
@@ -417,12 +416,10 @@ export default function ManajemenPaket() {
           )}
         </AnimatePresence>
       )}
-
-      {/* CSS untuk .input-field (seperti di file admin lain) */}
       <style>{`
         .input-field { display: block; width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #D1D5DB; border-radius: 0.375rem; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); }
         .input-field:focus { outline: none; border-color: #3B82F6; box-shadow: 0 0 0 2px #BFDBFE; }
       `}</style>
     </div>
   );
-    }
+}
