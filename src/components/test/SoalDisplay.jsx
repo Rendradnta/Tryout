@@ -159,11 +159,10 @@ export default function SoalDisplay({ soal, jawaban, onSelectJawaban }) {
       {/* 1. Tampilkan Narasi (jika ada) */}
       {soal.narasi_soal && (
         <div 
-          // --- PERBAIKAN DI SINI ---
-          // Tambahkan 'prose' dan 'max-w-none'
-          className="prose max-w-none p-4 bg-gray-50 border border-gray-200 rounded-lg text-sm"
-          dangerouslySetInnerHTML={{ __html: soal.narasi_soal }} 
-        />
+  className="prose max-w-none p-4 bg-gray-50 border border-gray-200 rounded-lg text-sm 
+  [&>div>p]:my-4 [&>p]:my-4"
+  dangerouslySetInnerHTML={{ __html: soal.narasi_soal }} 
+/>
       )}
       
       {/* 2. Tampilkan Teks Soal (Pertanyaan) */}
