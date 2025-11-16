@@ -4,7 +4,8 @@ import React from 'react';
 const PilihanGandaBiasa = ({ soal, jawaban, onSelect }) => {
   return (
     <div className="space-y-3">
-      {soal.opsi_jawaban.map((opsi) => {
+      {/* Kita tambahkan pengecekan '(soal.opsi_jawaban || [])' agar aman jika data null */}
+      {(soal.opsi_jawaban || []).map((opsi) => {
         const isSelected = jawaban === opsi.id;
         return (
           <label
@@ -27,8 +28,8 @@ const PilihanGandaBiasa = ({ soal, jawaban, onSelect }) => {
               <span className={`font-bold mr-3 ${isSelected ? 'text-blue-700' : ''}`}>
                 {opsi.id}.
               </span>
-              {/* Gunakan dangerouslySetInnerHTML jika opsi berisi HTML/MathJax */}
-              <span dangerouslySetInnerHTML={{ __html: opsi.teks }} />
+              {/* 'prose-sm' juga ditambahkan di sini agar HTML di opsi juga rapi */}
+              <span className="prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: opsi.teks }} />
             </div>
           </label>
         );
@@ -39,16 +40,13 @@ const PilihanGandaBiasa = ({ soal, jawaban, onSelect }) => {
 
 // Tampilan untuk Pilihan Ganda Kompleks (PGK) - Kotak Centang
 const PilihanGandaKompleks = ({ soal, jawaban, onSelect }) => {
-  // Jawaban untuk PGK adalah array, misal: ["1", "3"]
   const currentSelection = jawaban || [];
 
   const handleChange = (opsiId) => {
     let newSelection;
     if (currentSelection.includes(opsiId)) {
-      // Jika sudah ada, hapus dari array
       newSelection = currentSelection.filter(id => id !== opsiId);
     } else {
-      // Jika belum ada, tambahkan ke array
       newSelection = [...currentSelection, opsiId];
     }
     onSelect(soal.id, newSelection);
@@ -56,12 +54,12 @@ const PilihanGandaKompleks = ({ soal, jawaban, onSelect }) => {
 
   return (
     <div className="space-y-3">
-      {soal.opsi_jawaban.map((opsi) => {
+      {(soal.opsi_jawaban || []).map((opsi) => {
         const isSelected = currentSelection.includes(opsi.id);
         return (
           <label
             key={opsi.id}
-            className={`block w-full p-4 border rounded-lg cursor-pointer transition-colors
+            className={`flex items-center w-full p-4 border rounded-lg cursor-pointer transition-colors
               ${isSelected 
                 ? 'bg-blue-100 border-blue-500 ring-2 ring-blue-500' 
                 : 'bg-white border-gray-300 hover:bg-gray-50'
@@ -75,8 +73,7 @@ const PilihanGandaKompleks = ({ soal, jawaban, onSelect }) => {
               onChange={() => handleChange(opsi.id)}
               className="mr-3 h-5 w-5 text-blue-600 border-gray-300 rounded"
             />
-            {/* Gunakan dangerouslySetInnerHTML jika opsi berisi HTML/MathJax */}
-            <span dangerouslySetInnerHTML={{ __html: opsi.teks }} />
+            <span className="prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: opsi.teks }} />
           </label>
         );
       })}
@@ -86,7 +83,6 @@ const PilihanGandaKompleks = ({ soal, jawaban, onSelect }) => {
 
 // Tampilan untuk Soal Tabel (Benar/Salah)
 const PilihanGandaTabel = ({ soal, jawaban, onSelect }) => {
-  // Jawaban untuk Tabel adalah objek, misal: { "pernyataan_1": "benar", ... }
   const currentSelection = jawaban || {};
 
   const handleChange = (pernyataanId, nilai) => {
@@ -107,9 +103,9 @@ const PilihanGandaTabel = ({ soal, jawaban, onSelect }) => {
         </tr>
       </thead>
       <tbody>
-        {soal.opsi_jawaban.map((pernyataan) => (
+        {(soal.opsi_jawaban || []).map((pernyataan) => (
           <tr key={pernyataan.id} className="even:bg-white odd:bg-gray-50">
-            <td className="border border-gray-300 p-3" dangerouslySetInnerHTML={{ __html: pernyataan.teks }} />
+            <td className="border border-gray-300 p-3 prose-sm max-w-xs" dangerouslySetInnerHTML={{ __html: pernyataan.teks }} />
             <td className="border border-gray-300 p-3 text-center">
               <input
                 type="radio"
@@ -152,8 +148,7 @@ export default function SoalDisplay({ soal, jawaban, onSelectJawaban }) {
         return <PilihanGandaTabel soal={soal} jawaban={jawaban} onSelect={onSelectJawaban} />;
       case 'isian':
         // TODO: Buat tampilan untuk soal isian singkat
-        // Untuk saat ini, kita samakan dengan PG
-        return <PilihanGandaBiasa soal={soal} jawaban={jawaban} onSelect={onSelectJawaban} />;
+        return <p className="text-gray-700">Tipe soal "isian" belum didukung.</p>;
       default:
         return <p className="text-red-500">Tipe soal tidak dikenal: {soal.tipe_soal}</p>;
     }
@@ -164,14 +159,18 @@ export default function SoalDisplay({ soal, jawaban, onSelectJawaban }) {
       {/* 1. Tampilkan Narasi (jika ada) */}
       {soal.narasi_soal && (
         <div 
-          className="p-4 bg-gray-50 border border-gray-200 rounded-lg text-sm"
+          // --- PERBAIKAN DI SINI ---
+          // Tambahkan 'prose' dan 'max-w-none'
+          className="prose max-w-none p-4 bg-gray-50 border border-gray-200 rounded-lg text-sm"
           dangerouslySetInnerHTML={{ __html: soal.narasi_soal }} 
         />
       )}
       
       {/* 2. Tampilkan Teks Soal (Pertanyaan) */}
       <div 
-        className="text-base text-gray-900 leading-relaxed"
+        // --- PERBAIKAN DI SINI ---
+        // Tambahkan 'prose' dan 'max-w-none'
+        className="prose max-w-none text-base text-gray-900 leading-relaxed"
         dangerouslySetInnerHTML={{ __html: soal.teks_soal }} 
       />
       
@@ -181,4 +180,4 @@ export default function SoalDisplay({ soal, jawaban, onSelectJawaban }) {
       </div>
     </article>
   );
-}
+    }
