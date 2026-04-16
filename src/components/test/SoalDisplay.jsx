@@ -174,8 +174,8 @@ export default function SoalDisplay({ soal, jawaban, onSelectJawaban }) {
           className={`prose max-w-none p-4 bg-gray-50 border border-gray-200 rounded-lg text-sm 
           [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-md [&_img]:my-3
           ${narasiHasHTML 
-            ? 'prose-p:my-2 prose-ol:my-2 prose-ul:my-2 prose-li:my-0' // Jika HTML, rapihkan margin list-nya
-            : 'whitespace-pre-wrap' // Jika teks biasa, paksa baca karakter Enter
+            ? 'prose-p:mb-4 prose-p:mt-0 prose-ol:mb-4 prose-ul:mb-4 prose-li:mb-0' // <- PERBAIKAN DI SINI
+            : 'whitespace-pre-wrap' 
           }`}
           dangerouslySetInnerHTML={{ __html: soal.narasi_soal }} 
         />
@@ -186,7 +186,7 @@ export default function SoalDisplay({ soal, jawaban, onSelectJawaban }) {
         className={`prose max-w-none text-base text-gray-900 leading-relaxed 
         [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-lg [&_img]:shadow-sm [&_img]:my-4
         ${teksHasHTML 
-          ? 'prose-p:my-2 prose-ol:my-2 prose-ul:my-2 prose-li:my-0' 
+          ? 'prose-p:mb-4 prose-p:mt-0 prose-ol:mb-4 prose-ul:mb-4 prose-li:mb-0' // <- PERBAIKAN DI SINI
           : 'whitespace-pre-wrap'
         }`}
         dangerouslySetInnerHTML={{ __html: soal.teks_soal }} 
