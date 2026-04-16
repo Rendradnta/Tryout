@@ -256,10 +256,10 @@ export default function TestPage() {
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
         body: JSON.stringify(payload)
       });
-      if (res.status !== 202) { 
+      if (!res.ok) { 
         const errData = await res.json();
         throw new Error(errData.error || "Gagal menyimpan jawaban.");
-      }
+        }
       setShowConfirmModal(false);
       setShowSuccessModal(true);
     } catch (err) {
