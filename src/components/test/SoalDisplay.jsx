@@ -161,7 +161,8 @@ export default function SoalDisplay({ soal, jawaban, onSelectJawaban }) {
       {soal.narasi_soal && (
         <div 
           className="prose max-w-none p-4 bg-gray-50 border border-gray-200 rounded-lg text-sm 
-          prose-p:my-2 prose-ol:my-2 prose-ul:my-2 prose-li:my-0"
+          whitespace-pre-wrap prose-p:m-0 prose-ol:m-0 prose-ul:m-0 prose-li:m-0 
+          [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-md [&_img]:my-3"
           dangerouslySetInnerHTML={{ __html: soal.narasi_soal }} 
         />
       )}
@@ -169,7 +170,8 @@ export default function SoalDisplay({ soal, jawaban, onSelectJawaban }) {
       {/* 2. Tampilkan Teks Soal (Pertanyaan) */}
       <div 
         className="prose max-w-none text-base text-gray-900 leading-relaxed 
-        prose-p:my-2 prose-ol:my-2 prose-ul:my-2 prose-li:my-0"
+        whitespace-pre-wrap prose-p:m-0 prose-ol:m-0 prose-ul:m-0 prose-li:m-0 
+        [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-lg [&_img]:shadow-sm [&_img]:my-4"
         dangerouslySetInnerHTML={{ __html: soal.teks_soal }} 
       />
       
