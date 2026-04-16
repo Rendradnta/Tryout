@@ -4,7 +4,6 @@ import React from 'react';
 const PilihanGandaBiasa = ({ soal, jawaban, onSelect }) => {
   return (
     <div className="space-y-3">
-      {/* Kita tambahkan pengecekan '(soal.opsi_jawaban || [])' agar aman jika data null */}
       {(soal.opsi_jawaban || []).map((opsi) => {
         const isSelected = jawaban === opsi.id;
         return (
@@ -22,14 +21,14 @@ const PilihanGandaBiasa = ({ soal, jawaban, onSelect }) => {
               value={opsi.id}
               checked={isSelected}
               onChange={() => onSelect(soal.id, opsi.id)}
-              className="sr-only" // Sembunyikan radio button asli
+              className="sr-only" 
             />
-            <div className="flex items-center">
-              <span className={`font-bold mr-3 ${isSelected ? 'text-blue-700' : ''}`}>
+            <div className="flex items-start"> {/* Ubah items-center jadi items-start agar huruf rapi jika teks panjang */}
+              <span className={`font-bold mr-3 mt-0.5 ${isSelected ? 'text-blue-700' : ''}`}>
                 {opsi.id}.
               </span>
-              {/* 'prose-sm' juga ditambahkan di sini agar HTML di opsi juga rapi */}
-              <span className="prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: opsi.teks }} />
+              {/* Tambahkan whitespace-pre-wrap di sini */}
+              <span className="prose-sm max-w-none whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: opsi.teks }} />
             </div>
           </label>
         );
@@ -59,7 +58,7 @@ const PilihanGandaKompleks = ({ soal, jawaban, onSelect }) => {
         return (
           <label
             key={opsi.id}
-            className={`flex items-center w-full p-4 border rounded-lg cursor-pointer transition-colors
+            className={`flex items-start w-full p-4 border rounded-lg cursor-pointer transition-colors
               ${isSelected 
                 ? 'bg-blue-100 border-blue-500 ring-2 ring-blue-500' 
                 : 'bg-white border-gray-300 hover:bg-gray-50'
@@ -71,9 +70,10 @@ const PilihanGandaKompleks = ({ soal, jawaban, onSelect }) => {
               value={opsi.id}
               checked={isSelected}
               onChange={() => handleChange(opsi.id)}
-              className="mr-3 h-5 w-5 text-blue-600 border-gray-300 rounded"
+              className="mr-3 mt-1 h-5 w-5 flex-shrink-0 text-blue-600 border-gray-300 rounded"
             />
-            <span className="prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: opsi.teks }} />
+            {/* Tambahkan whitespace-pre-wrap di sini */}
+            <span className="prose-sm max-w-none whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: opsi.teks }} />
           </label>
         );
       })}
@@ -94,40 +94,43 @@ const PilihanGandaTabel = ({ soal, jawaban, onSelect }) => {
   };
 
   return (
-    <table className="w-full border-collapse border border-gray-300">
-      <thead>
-        <tr className="bg-gray-100">
-          <th className="border border-gray-300 p-3 text-left">Pernyataan</th>
-          <th className="border border-gray-300 p-3 w-24 text-center">Benar</th>
-          <th className="border border-gray-300 p-3 w-24 text-center">Salah</th>
-        </tr>
-      </thead>
-      <tbody>
-        {(soal.opsi_jawaban || []).map((pernyataan) => (
-          <tr key={pernyataan.id} className="even:bg-white odd:bg-gray-50">
-            <td className="border border-gray-300 p-3 prose-sm max-w-xs" dangerouslySetInnerHTML={{ __html: pernyataan.teks }} />
-            <td className="border border-gray-300 p-3 text-center">
-              <input
-                type="radio"
-                name={`tabel-${soal.id}-${pernyataan.id}`}
-                checked={currentSelection[pernyataan.id] === 'benar'}
-                onChange={() => handleChange(pernyataan.id, 'benar')}
-                className="h-5 w-5 text-blue-600"
-              />
-            </td>
-            <td className="border border-gray-300 p-3 text-center">
-              <input
-                type="radio"
-                name={`tabel-${soal.id}-${pernyataan.id}`}
-                checked={currentSelection[pernyataan.id] === 'salah'}
-                onChange={() => handleChange(pernyataan.id, 'salah')}
-                className="h-5 w-5 text-blue-600"
-              />
-            </td>
+    <div className="overflow-x-auto"> {/* Tambahan agar tabel tidak merusak layout di HP */}
+      <table className="w-full border-collapse border border-gray-300">
+        <thead>
+          <tr className="bg-gray-100">
+            <th className="border border-gray-300 p-3 text-left">Pernyataan</th>
+            <th className="border border-gray-300 p-3 w-24 text-center">Benar</th>
+            <th className="border border-gray-300 p-3 w-24 text-center">Salah</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {(soal.opsi_jawaban || []).map((pernyataan) => (
+            <tr key={pernyataan.id} className="even:bg-white odd:bg-gray-50">
+              {/* Tambahkan whitespace-pre-wrap di sini */}
+              <td className="border border-gray-300 p-3 prose-sm max-w-xs whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: pernyataan.teks }} />
+              <td className="border border-gray-300 p-3 text-center align-middle">
+                <input
+                  type="radio"
+                  name={`tabel-${soal.id}-${pernyataan.id}`}
+                  checked={currentSelection[pernyataan.id] === 'benar'}
+                  onChange={() => handleChange(pernyataan.id, 'benar')}
+                  className="h-5 w-5 text-blue-600"
+                />
+              </td>
+              <td className="border border-gray-300 p-3 text-center align-middle">
+                <input
+                  type="radio"
+                  name={`tabel-${soal.id}-${pernyataan.id}`}
+                  checked={currentSelection[pernyataan.id] === 'salah'}
+                  onChange={() => handleChange(pernyataan.id, 'salah')}
+                  className="h-5 w-5 text-blue-600"
+                />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 };
 
@@ -137,7 +140,6 @@ export default function SoalDisplay({ soal, jawaban, onSelectJawaban }) {
     return <div className="text-center text-gray-500">Soal tidak ditemukan.</div>;
   }
 
-  // Fungsi render dinamis berdasarkan tipe soal
   const renderTipeSoal = () => {
     switch (soal.tipe_soal) {
       case 'pg':
@@ -147,7 +149,6 @@ export default function SoalDisplay({ soal, jawaban, onSelectJawaban }) {
       case 'tabel':
         return <PilihanGandaTabel soal={soal} jawaban={jawaban} onSelect={onSelectJawaban} />;
       case 'isian':
-        // TODO: Buat tampilan untuk soal isian singkat
         return <p className="text-gray-700">Tipe soal "isian" belum didukung.</p>;
       default:
         return <p className="text-red-500">Tipe soal tidak dikenal: {soal.tipe_soal}</p>;
@@ -159,17 +160,17 @@ export default function SoalDisplay({ soal, jawaban, onSelectJawaban }) {
       {/* 1. Tampilkan Narasi (jika ada) */}
       {soal.narasi_soal && (
         <div 
-  className="prose max-w-none p-4 bg-gray-50 border border-gray-200 rounded-lg text-sm 
-  [&>div>p]:my-4 [&>p]:my-4"
-  dangerouslySetInnerHTML={{ __html: soal.narasi_soal }} 
-/>
+          // Tambahkan whitespace-pre-wrap di sini
+          className="prose max-w-none p-4 bg-gray-50 border border-gray-200 rounded-lg text-sm 
+          [&>div>p]:my-4 [&>p]:my-4 whitespace-pre-wrap"
+          dangerouslySetInnerHTML={{ __html: soal.narasi_soal }} 
+        />
       )}
       
       {/* 2. Tampilkan Teks Soal (Pertanyaan) */}
       <div 
-        // --- PERBAIKAN DI SINI ---
-        // Tambahkan 'prose' dan 'max-w-none'
-        className="prose max-w-none text-base text-gray-900 leading-relaxed"
+        // Tambahkan whitespace-pre-wrap di sini
+        className="prose max-w-none text-base text-gray-900 leading-relaxed whitespace-pre-wrap"
         dangerouslySetInnerHTML={{ __html: soal.teks_soal }} 
       />
       
@@ -179,4 +180,4 @@ export default function SoalDisplay({ soal, jawaban, onSelectJawaban }) {
       </div>
     </article>
   );
-    }
+  }
