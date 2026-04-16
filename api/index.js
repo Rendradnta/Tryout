@@ -174,12 +174,67 @@ testRoutes.get('/getSoal', async (c) => {
   if (error) return c.json({ error: error.message }, 500);
   return c.json({ data, config: paketData });
 });
-testRoutes.post('/submit', async (c) => { /* ... (Logika Submit) ... */ 
+testRoutes.post('/submit', async (c) => { 
   const user = c.get('user');
   const body = await c.req.json();
-  const dataPekerjaan = { user_id: user.id, ...body };
-  await kv.lpush('antrian_jawaban', dataPekerjaan);
-  return c.json({ message: 'Jawaban diterima dan sedang diproses.' }, 202);
+  const { paket_id, tipe_ujian, waktu_mulai, waktu_selesai, jawaban_user } = body;
+
+  try {
+    // 1. Ambil kunci jawaban langsung dari Supabase
+    const { data: kunciJawabanPaket, error: kunciError } = await supabaseAdmin
+      .from('soal')
+      .select('id, subtes_id, tipe_soal, kunci_jawaban')
+      .eq('paket_id', paket_id);
+
+    if (kunciError || !kunciJawabanPaket) {
+      console.error(`Gagal ambil kunci untuk paket ${paket_id}: ${kunciError?.message}`);
+      return c.json({ error: 'Gagal mengambil data kunci jawaban.' }, 500);
+    }
+
+    // 2. Hitung skor berdasarkan tipe ujian (SKD / UTBK)
+    let hasilSkor;
+    if (tipe_ujian === 'skd') {
+      hasilSkor = await hitungSkorSKD(jawaban_user, kunciJawabanPaket);
+    } else if (tipe_ujian === 'utbk') {
+      hasilSkor = await hitungSkorUTBK(jawaban_user, kunciJawabanPaket);
+    } else {
+      return c.json({ error: 'Tipe ujian tidak didukung.' }, 400);
+    }
+
+    // 3. Siapkan payload untuk tabel history_tes
+    const dataHistory = {
+      user_id: user.id, 
+      paket_id: paket_id, 
+      waktu_mulai: waktu_mulai,
+      waktu_selesai: waktu_selesai, 
+      jawaban_user: jawaban_user,
+      skor_total: hasilSkor.skor_total, 
+      rincian_skor: hasilSkor.rincian_skor,
+      status_lulus: hasilSkor.status_lulus || null, 
+      status: 'selesai'
+    };
+
+    // 4. Insert direct DB ke Supabase
+    const { data: insertedData, error: insertError } = await supabaseAdmin
+      .from('history_tes')
+      .insert([dataHistory])
+      .select('id, skor_total, status_lulus')
+      .single();
+
+    if (insertError) {
+      return c.json({ error: `Gagal menyimpan hasil ujian: ${insertError.message}` }, 500);
+    }
+
+    // 5. Kembalikan respons sukses beserta skor ringkas jika diperlukan UI
+    return c.json({ 
+      message: 'Jawaban berhasil diproses dan disimpan.',
+      hasil: insertedData
+    }, 200);
+
+  } catch (err) {
+    console.error('Error saat submit ujian:', err);
+    return c.json({ error: 'Terjadi kesalahan internal server saat memproses jawaban.' }, 500);
+  }
 });
 testRoutes.get('/getPembahasan', async (c) => { /* ... (Logika Get Pembahasan) ... */ 
   const user = c.get('user');
