@@ -140,6 +140,17 @@ export default function SoalDisplay({ soal, jawaban, onSelectJawaban }) {
     return <div className="text-center text-gray-500">Soal tidak ditemukan.</div>;
   }
 
+  // Fungsi pintar untuk mendeteksi apakah teks dari DB menggunakan HTML atau tidak
+  const isHTML = (str) => {
+    if (!str) return false;
+    // Deteksi jika ada tag seperti <p>, <strong>, <ol>, dll. 
+    // Aman untuk soal matematika seperti "x < 5" karena mendeteksi huruf setelah "<".
+    return /<\/?[a-z][\s\S]*>/i.test(str);
+  };
+
+  const narasiHasHTML = isHTML(soal.narasi_soal);
+  const teksHasHTML = isHTML(soal.teks_soal);
+
   const renderTipeSoal = () => {
     switch (soal.tipe_soal) {
       case 'pg':
@@ -160,18 +171,24 @@ export default function SoalDisplay({ soal, jawaban, onSelectJawaban }) {
       {/* 1. Tampilkan Narasi (jika ada) */}
       {soal.narasi_soal && (
         <div 
-          className="prose max-w-none p-4 bg-gray-50 border border-gray-200 rounded-lg text-sm 
-          whitespace-pre-wrap prose-p:m-0 prose-ol:m-0 prose-ul:m-0 prose-li:m-0 
-          [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-md [&_img]:my-3"
+          className={`prose max-w-none p-4 bg-gray-50 border border-gray-200 rounded-lg text-sm 
+          [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-md [&_img]:my-3
+          ${narasiHasHTML 
+            ? 'prose-p:my-2 prose-ol:my-2 prose-ul:my-2 prose-li:my-0' // Jika HTML, rapihkan margin list-nya
+            : 'whitespace-pre-wrap' // Jika teks biasa, paksa baca karakter Enter
+          }`}
           dangerouslySetInnerHTML={{ __html: soal.narasi_soal }} 
         />
       )}
       
       {/* 2. Tampilkan Teks Soal (Pertanyaan) */}
       <div 
-        className="prose max-w-none text-base text-gray-900 leading-relaxed 
-        whitespace-pre-wrap prose-p:m-0 prose-ol:m-0 prose-ul:m-0 prose-li:m-0 
-        [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-lg [&_img]:shadow-sm [&_img]:my-4"
+        className={`prose max-w-none text-base text-gray-900 leading-relaxed 
+        [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-lg [&_img]:shadow-sm [&_img]:my-4
+        ${teksHasHTML 
+          ? 'prose-p:my-2 prose-ol:my-2 prose-ul:my-2 prose-li:my-0' 
+          : 'whitespace-pre-wrap'
+        }`}
         dangerouslySetInnerHTML={{ __html: soal.teks_soal }} 
       />
       
@@ -181,4 +198,4 @@ export default function SoalDisplay({ soal, jawaban, onSelectJawaban }) {
       </div>
     </article>
   );
-  }
+}
