@@ -114,9 +114,9 @@ export default function PeringkatPage() {
   
   // Fungsi untuk memberi ikon medali
   const getMedal = (index) => {
-    if (index === 0) return <span title="Peringkat 1"></span>;
-    if (index === 1) return <span title="Peringkat 2"></span>;
-    if (index === 2) return <span title="Peringkat 3"></span>;
+    if (index === 0) return <span title="Peringkat 1">🥇</span>;
+    if (index === 1) return <span title="Peringkat 2">🥈</span>;
+    if (index === 2) return <span title="Peringkat 3">🥉</span>;
     return index + 1;
   };
 
