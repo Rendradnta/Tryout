@@ -160,17 +160,16 @@ export default function SoalDisplay({ soal, jawaban, onSelectJawaban }) {
       {/* 1. Tampilkan Narasi (jika ada) */}
       {soal.narasi_soal && (
         <div 
-          // Tambahkan whitespace-pre-wrap di sini
           className="prose max-w-none p-4 bg-gray-50 border border-gray-200 rounded-lg text-sm 
-          [&>div>p]:my-4 [&>p]:my-4 whitespace-pre-wrap"
+          prose-p:my-2 prose-ol:my-2 prose-ul:my-2 prose-li:my-0"
           dangerouslySetInnerHTML={{ __html: soal.narasi_soal }} 
         />
       )}
       
       {/* 2. Tampilkan Teks Soal (Pertanyaan) */}
       <div 
-        // Tambahkan whitespace-pre-wrap di sini
-        className="prose max-w-none text-base text-gray-900 leading-relaxed whitespace-pre-wrap"
+        className="prose max-w-none text-base text-gray-900 leading-relaxed 
+        prose-p:my-2 prose-ol:my-2 prose-ul:my-2 prose-li:my-0"
         dangerouslySetInnerHTML={{ __html: soal.teks_soal }} 
       />
       
