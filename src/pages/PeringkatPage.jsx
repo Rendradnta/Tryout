@@ -33,7 +33,7 @@ export default function PeringkatPage() {
   const [selectedPaketId, setSelectedPaketId] = useState(''); // Paket yg dipilih
   const [peringkat, setPeringkat] = useState([]); // Data peringkat
   
-  // 2. State untuk loading & error
+  // 2. State untuk loading & errorr
   const [loadingPaket, setLoadingPaket] = useState(true);
   const [loadingPeringkat, setLoadingPeringkat] = useState(false);
   const [error, setError] = useState(null);
