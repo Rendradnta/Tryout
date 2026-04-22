@@ -1,4 +1,8 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
+
+// Import CSS dan fitur Auto-Render dari KaTeX
+import 'katex/dist/katex.min.css';
+import renderMathInElement from 'katex/dist/contrib/auto-render';
 
 // Tampilan untuk Pilihan Ganda Biasa (PG) atau Isian Singkat
 const PilihanGandaBiasa = ({ soal, jawaban, onSelect }) => {
@@ -23,11 +27,10 @@ const PilihanGandaBiasa = ({ soal, jawaban, onSelect }) => {
               onChange={() => onSelect(soal.id, opsi.id)}
               className="sr-only" 
             />
-            <div className="flex items-start"> {/* Ubah items-center jadi items-start agar huruf rapi jika teks panjang */}
+            <div className="flex items-start"> 
               <span className={`font-bold mr-3 mt-0.5 ${isSelected ? 'text-blue-700' : ''}`}>
                 {opsi.id}.
               </span>
-              {/* Tambahkan whitespace-pre-wrap di sini */}
               <span className="prose-sm max-w-none whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: opsi.teks }} />
             </div>
           </label>
@@ -72,7 +75,6 @@ const PilihanGandaKompleks = ({ soal, jawaban, onSelect }) => {
               onChange={() => handleChange(opsi.id)}
               className="mr-3 mt-1 h-5 w-5 flex-shrink-0 text-blue-600 border-gray-300 rounded"
             />
-            {/* Tambahkan whitespace-pre-wrap di sini */}
             <span className="prose-sm max-w-none whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: opsi.teks }} />
           </label>
         );
@@ -94,7 +96,7 @@ const PilihanGandaTabel = ({ soal, jawaban, onSelect }) => {
   };
 
   return (
-    <div className="overflow-x-auto"> {/* Tambahan agar tabel tidak merusak layout di HP */}
+    <div className="overflow-x-auto">
       <table className="w-full border-collapse border border-gray-300">
         <thead>
           <tr className="bg-gray-100">
@@ -106,7 +108,6 @@ const PilihanGandaTabel = ({ soal, jawaban, onSelect }) => {
         <tbody>
           {(soal.opsi_jawaban || []).map((pernyataan) => (
             <tr key={pernyataan.id} className="even:bg-white odd:bg-gray-50">
-              {/* Tambahkan whitespace-pre-wrap di sini */}
               <td className="border border-gray-300 p-3 prose-sm max-w-xs whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: pernyataan.teks }} />
               <td className="border border-gray-300 p-3 text-center align-middle">
                 <input
@@ -136,15 +137,30 @@ const PilihanGandaTabel = ({ soal, jawaban, onSelect }) => {
 
 // --- Komponen Utama (SoalDisplay) ---
 export default function SoalDisplay({ soal, jawaban, onSelectJawaban }) {
+  // 1. Buat reference untuk container utama
+  const containerRef = useRef(null);
+
+  // 2. Jalankan efek KaTeX setiap kali soal atau jawaban berubah
+  useEffect(() => {
+    if (containerRef.current) {
+      renderMathInElement(containerRef.current, {
+        delimiters: [
+          { left: '$$', right: '$$', display: true }, // Rumus di tengah baris baru
+          { left: '$', right: '$', display: false },  // Rumus menyatu dengan teks (inline)
+          { left: '\\(', right: '\\)', display: false },
+          { left: '\\[', right: '\\]', display: true }
+        ],
+        throwOnError: false // Mencegah web crash jika ada typo di penulisan rumus database
+      });
+    }
+  }, [soal, jawaban]);
+
   if (!soal) {
     return <div className="text-center text-gray-500">Soal tidak ditemukan.</div>;
   }
 
-  // Fungsi pintar untuk mendeteksi apakah teks dari DB menggunakan HTML atau tidak
   const isHTML = (str) => {
     if (!str) return false;
-    // Deteksi jika ada tag seperti <p>, <strong>, <ol>, dll. 
-    // Aman untuk soal matematika seperti "x < 5" karena mendeteksi huruf setelah "<".
     return /<\/?[a-z][\s\S]*>/i.test(str);
   };
 
@@ -167,35 +183,33 @@ export default function SoalDisplay({ soal, jawaban, onSelectJawaban }) {
   };
 
   return (
-    <article className="space-y-6">
-      {/* 1. Tampilkan Narasi (jika ada) */}
+    // 3. Pasang ref pada elemen bungkus terluar (<article>)
+    <article ref={containerRef} className="space-y-6">
       {soal.narasi_soal && (
         <div 
           className={`prose max-w-none p-4 bg-gray-50 border border-gray-200 rounded-lg text-sm 
           [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-md [&_img]:my-3
           ${narasiHasHTML 
-            ? 'prose-p:mb-4 prose-p:mt-0 prose-ol:mb-4 prose-ul:mb-4 prose-li:mb-0' // <- PERBAIKAN DI SINI
+            ? 'prose-p:mb-4 prose-p:mt-0 prose-ol:mb-4 prose-ul:mb-4 prose-li:mb-0' 
             : 'whitespace-pre-wrap' 
           }`}
           dangerouslySetInnerHTML={{ __html: soal.narasi_soal }} 
         />
       )}
       
-      {/* 2. Tampilkan Teks Soal (Pertanyaan) */}
       <div 
         className={`prose max-w-none text-base text-gray-900 leading-relaxed 
         [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-lg [&_img]:shadow-sm [&_img]:my-4
         ${teksHasHTML 
-          ? 'prose-p:mb-4 prose-p:mt-0 prose-ol:mb-4 prose-ul:mb-4 prose-li:mb-0' // <- PERBAIKAN DI SINI
+          ? 'prose-p:mb-4 prose-p:mt-0 prose-ol:mb-4 prose-ul:mb-4 prose-li:mb-0' 
           : 'whitespace-pre-wrap'
         }`}
         dangerouslySetInnerHTML={{ __html: soal.teks_soal }} 
       />
       
-      {/* 3. Tampilkan Pilihan Jawaban (Dinamis) */}
       <div className="mt-6">
         {renderTipeSoal()}
       </div>
     </article>
   );
-}
+              }
